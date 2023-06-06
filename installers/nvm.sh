@@ -2,8 +2,4 @@ echo '##################################################################'
 echo '######################  Installing NVM  ##########################'
 echo '##################################################################'
 
-cd ~/
-
-git clone https://github.com/nvm-sh/nvm.git .nvm
-
-cd $(pwd)
+git clone https://github.com/nvm-sh/nvm.git ~/.nvm

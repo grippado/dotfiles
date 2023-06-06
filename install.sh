@@ -31,4 +31,10 @@ touch ~/.zshrc
 echo "#source zsh files" >> ~/.zshrc
 echo "source $(pwd)/zsh/.zshrc_base" >> ~/.zshrc
 
+echo '##################################################################'
+echo '######################  Reload Configs  ##########################'
+echo '##################################################################'
+
+exec zsh -l
+
 echo "Done!!"
