@@ -15,6 +15,7 @@ echo '
 ███▀          ▀       █      ▐     ▀ ▀███▀             
                        ▀                               
                                                        '
+source $(pwd)/configs/git.sh
 
 source $(pwd)/installers/brew.sh
 source $(pwd)/installers/base.sh
