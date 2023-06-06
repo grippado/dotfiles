@@ -1,0 +1,36 @@
+#GIT
+alias gfp="git fetch --all && git pull --all"
+alias gb-del-local="git branch -D"
+alias gb-del-remote="git push origin --delete"
+alias g-clean="git gc --prune=now && git remote prune origin"
+alias g-clean-local="git gc --prune=now"
+alias g-clean-remote="git remote prune origin"
+alias ggall="git branch -a | grep -v HEAD | perl -ne 'chomp($_); s|^\*?\s*||; if (m|(.+)/(.+)| && not $d{$2}) {print qq(git branch --track $2 $1/$2\n)} else {$d{$_}=1}' | csh -xfs"
+alias glol="git log --online"
+
+alias ceg="echo 'TE AMO'"
+
+#NPM
+alias npm-clear="rm -rf node_modules/ && rm -rf package-lock.json && rm -rf yarn.lock && rm -rf dist"
+
+#GLOBAL
+alias reload="source $HOME/.zshrc"
+alias m1="arch -arm64"
+
+#FOLDERS
+alias ww="nvim ~/www"
+
+#APPS
+alias vm="nvim"
+alias vim="nvim"
+alias oldvim="vim"
+
+# WEZTERM
+alias stop="wezterm cli split-pane --top"
+alias sleft="wezterm cli split-pane --left"
+
+#BREW
+alias brew-up="brew upgrade"
+
+#DEV
+alias serverhere="python3 -m http.server 8088"
