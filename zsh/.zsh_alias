@@ -14,7 +14,7 @@ alias ceg="echo 'TE AMO'"
 alias npm-clear="rm -rf node_modules/ && rm -rf package-lock.json && rm -rf yarn.lock && rm -rf dist"
 
 #GLOBAL
-alias reload="source $HOME/.zshrc"
+alias reload="exec zsh -l"
 alias m1="arch -arm64"
 
 #FOLDERS
