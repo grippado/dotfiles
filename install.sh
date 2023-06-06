@@ -20,10 +20,11 @@ source $(pwd)/configs/git.sh
 source $(pwd)/installers/brew.sh
 source $(pwd)/installers/base.sh
 source $(pwd)/installers/nvm.sh
+source $(pwd)/installers/omzsh.sh
+source $(pwd)/installers/fzf.sh
 
 # declaring variables to install dependencies
-wakatime='2eb832d9-2ddb-44fa-85c3-cd9c16fd8853'
-    #  waka_2eb832d9-2ddb-44fa-85c3-cd9c16fd8853
+wakatime=''
 bettervim=''
 
 echo "Creating config files"
