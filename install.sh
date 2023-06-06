@@ -17,7 +17,7 @@ echo '
                                                        '
 source $(pwd)/configs/git.sh
 
-source $(pwd)/installers/brew.sh
+source $(pwd)/installers/package-manager.sh
 source $(pwd)/installers/base.sh
 source $(pwd)/installers/nvm.sh
 source $(pwd)/installers/omzsh.sh
