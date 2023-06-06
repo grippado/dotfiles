@@ -1,0 +1,11 @@
+function acp() {
+  git add .
+  git commit -m "$1"
+  git push
+}
+
+function acpu() {
+  git add .
+  git commit -m "$1"
+  git push -u origin HEAD
+}
