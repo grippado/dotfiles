@@ -1,5 +1,5 @@
 export ZSH="${HOME}/.oh-my-zsh"
-export DFL="$(pwd)"
+export DFL="${HOME}/.dotfiles"
 
 ZSH_THEME="daveverwer"
 
@@ -17,5 +17,13 @@ export GITHUB_REGISTRY_TOKEN="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"
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"  # This loads nvm
+
+# pnpm
+export PNPM_HOME="/Users/grippado/Library/pnpm"
+case ":$PATH:" in
+  *":$PNPM_HOME:"*) ;;
+  *) export PATH="$PNPM_HOME:$PATH" ;;
+esac
+# pnpm end
 
 nvm use default > /dev/null 2>&1
