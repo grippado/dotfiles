@@ -16,6 +16,7 @@ alias npm-clear="rm -rf node_modules/ && rm -rf package-lock.json && rm -rf yarn
 #GLOBAL
 alias reload="exec zsh -l"
 alias m1="arch -arm64"
+alias x64="arch -x86_64"
 
 #FOLDERS
 alias ww="nvim ~/www"
