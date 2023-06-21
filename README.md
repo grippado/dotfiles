@@ -17,7 +17,7 @@ git clone git@github.com:grippado/dotfiles.git ~/.dotfiles
 
 cd ~/.dotfiles
 
-chmod r+x install.sh
+chmod +x install.sh
 
 ./install/sh
 ```
