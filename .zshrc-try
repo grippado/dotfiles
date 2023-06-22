@@ -1,4 +1,0 @@
-#source zsh files
-source /Users/grippado/www/personal/dotfiles/zsh/.zsh_alias
-source /Users/grippado/www/personal/dotfiles/zsh/.zsh_function
-source /Users/grippado/www/personal/dotfiles/zsh/.zshrc
