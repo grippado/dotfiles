@@ -22,6 +22,7 @@ source $(pwd)/installers/base.sh
 source $(pwd)/installers/nvm.sh
 source $(pwd)/installers/omzsh.sh
 source $(pwd)/installers/fzf.sh
+source $(pwd)/installers/bashtop.sh
 
 # declaring variables to install dependencies
 wakatime=''
