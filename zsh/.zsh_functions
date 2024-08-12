@@ -9,3 +9,7 @@ function acpu() {
   git commit -m "$1"
   git push -u origin HEAD
 }
+
+function dirfind() {
+  dirname $(which $1)
+}
