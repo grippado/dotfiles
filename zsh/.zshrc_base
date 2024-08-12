@@ -8,6 +8,7 @@ plugins=(git node fzf wakatime)
 source $ZSH/oh-my-zsh.sh
 source $DFL/zsh/.zsh_alias
 source $DFL/zsh/.zsh_functions
+source $DFL/zsh/.zsh_gcloud
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
@@ -17,13 +18,5 @@ export GITHUB_REGISTRY_TOKEN="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"
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"  # This loads nvm
-
-# pnpm
-export PNPM_HOME="${HOME}/Library/pnpm"
-case ":$PATH:" in
-  *":$PNPM_HOME:"*) ;;
-  *) export PATH="$PNPM_HOME:$PATH" ;;
-esac
-# pnpm end
 
 nvm use default > /dev/null 2>&1
