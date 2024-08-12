@@ -8,8 +8,6 @@ alias g-clean-remote="git remote prune origin"
 alias ggall="git branch -a | grep -v HEAD | perl -ne 'chomp($_); s|^\*?\s*||; if (m|(.+)/(.+)| && not $d{$2}) {print qq(git branch --track $2 $1/$2\n)} else {$d{$_}=1}' | csh -xfs"
 alias glol="git log --online"
 
-alias ceg="echo 'TE AMO'"
-
 #NPM
 alias npm-clear="rm -rf node_modules/ && rm -rf package-lock.json && rm -rf yarn.lock && rm -rf dist"
 
@@ -25,10 +23,6 @@ alias ww="nvim ~/www"
 alias vm="nvim"
 alias vim="nvim"
 alias oldvim="vim"
-
-# WEZTERM
-alias stop="wezterm cli split-pane --top"
-alias sleft="wezterm cli split-pane --left"
 
 #BREW
 alias brew-up="brew upgrade"

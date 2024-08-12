@@ -16,5 +16,5 @@ elif [[ "$platform" == 'macos' ]]; then
   echo '##################################################################'
   echo '##############  Installing base terminal Apps  ###################'
   echo '##################################################################'
-  arch -arm64 brew install git curl wget neovim neofetch
+  arch -arm64 brew install git curl wget neovim neofetch google-chrome brave-browser coconutbattery spotify stats btop
 fi
