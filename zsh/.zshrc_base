@@ -12,8 +12,11 @@ source $DFL/zsh/.zsh_gcloud
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
+export PATH=/opt/homebrew/bin:$PATH
 export PATH="/usr/local/sbin:$PATH"
+export PATH="/opt/homebrew/opt/postgresql@15/bin:$PATH"
 export GITHUB_REGISTRY_TOKEN="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"
+
 
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
