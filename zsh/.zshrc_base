@@ -42,6 +42,7 @@ source $ZSH/oh-my-zsh.sh
 # Load custom configurations
 source $DFL/zsh/.zsh_alias
 source $DFL/zsh/.zsh_functions
+source $DFL/zsh/.zsh_gcloud
 
 # Load FZF
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
