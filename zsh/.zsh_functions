@@ -9,3 +9,203 @@ function acpu() {
   git commit -m "$1"
   git push -u origin HEAD
 }
+
+# Create a new directory and enter it
+function mkcd() {
+    mkdir -p "$@" && cd "$@"
+}
+
+# Extract any archive
+function extract() {
+    if [ -f $1 ] ; then
+        case $1 in
+            *.tar.bz2)   tar xjf $1     ;;
+            *.tar.gz)    tar xzf $1     ;;
+            *.bz2)       bunzip2 $1     ;;
+            *.rar)       unrar e $1     ;;
+            *.gz)        gunzip $1      ;;
+            *.tar)       tar xf $1      ;;
+            *.tbz2)      tar xjf $1     ;;
+            *.tgz)       tar xzf $1     ;;
+            *.zip)       unzip $1       ;;
+            *.Z)         uncompress $1  ;;
+            *.7z)        7z x $1        ;;
+            *)          echo "'$1' cannot be extracted via extract()" ;;
+        esac
+    else
+        echo "'$1' is not a valid file"
+    fi
+}
+
+# Create a backup of a file
+function bak() {
+    cp "$1" "$1.bak"
+}
+
+# Create a backup of a file with timestamp
+function bakts() {
+    cp "$1" "$1.$(date +%Y%m%d_%H%M%S).bak"
+}
+
+# Get IP address
+function ip() {
+    curl -s https://api.ipify.org
+}
+
+# Get local IP address
+function localip() {
+    ipconfig getifaddr en0
+}
+
+# Get weather
+function weather() {
+    curl -s "wttr.in/$1"
+}
+
+# Create a new git repository and push it to GitHub
+function gitinit() {
+    git init
+    git add .
+    git commit -m "Initial commit"
+    git branch -M main
+    git remote add origin $1
+    git push -u origin main
+}
+
+# Create a new directory and initialize a git repository
+function gitdir() {
+    mkdir $1
+    cd $1
+    git init
+}
+
+# Create a new Python virtual environment
+function pyvenv() {
+    python3 -m venv venv
+    source venv/bin/activate
+}
+
+# Create a new Node.js project
+function nodeinit() {
+    npm init -y
+    git init
+    echo "node_modules/" > .gitignore
+}
+
+# Create a new React project
+function reactinit() {
+    npx create-react-app $1
+    cd $1
+    npm install
+}
+
+# Create a new Next.js project
+function nextinit() {
+    npx create-next-app@latest $1
+    cd $1
+    npm install
+}
+
+# Create a new Vue.js project
+function vueinit() {
+    npm init vue@latest $1
+    cd $1
+    npm install
+}
+
+# Create a new Express.js project
+function expressinit() {
+    mkdir $1
+    cd $1
+    npm init -y
+    npm install express
+    echo "const express = require('express');" > index.js
+    echo "const app = express();" >> index.js
+    echo "const port = process.env.PORT || 3000;" >> index.js
+    echo "app.get('/', (req, res) => res.send('Hello World!'));" >> index.js
+    echo "app.listen(port, () => console.log(\`Server running at http://localhost:\${port}\`));" >> index.js
+}
+
+# Create a new Docker project
+function dockerinit() {
+    mkdir $1
+    cd $1
+    echo "FROM node:latest" > Dockerfile
+    echo "WORKDIR /app" >> Dockerfile
+    echo "COPY package*.json ./" >> Dockerfile
+    echo "RUN npm install" >> Dockerfile
+    echo "COPY . ." >> Dockerfile
+    echo "EXPOSE 3000" >> Dockerfile
+    echo "CMD [\"npm\", \"start\"]" >> Dockerfile
+    echo "node_modules/" > .gitignore
+    echo "npm-debug.log" >> .gitignore
+}
+
+# Create a new Kubernetes deployment
+function k8sinit() {
+    mkdir $1
+    cd $1
+    kubectl create deployment $1 --image=nginx --dry-run=client -o yaml > deployment.yaml
+    kubectl create service clusterip $1 --tcp=80:80 --dry-run=client -o yaml > service.yaml
+}
+
+# Create a new Terraform project
+function tfinit() {
+    mkdir $1
+    cd $1
+    terraform init
+    echo "provider \"aws\" {" > main.tf
+    echo "  region = \"us-east-1\"" >> main.tf
+    echo "}" >> main.tf
+}
+
+# Create a new Ansible project
+function ansibleinit() {
+    mkdir $1
+    cd $1
+    mkdir -p roles/{common,webserver,database}
+    touch inventory
+    touch site.yml
+    echo "all:" > inventory
+    echo "  hosts:" >> inventory
+    echo "    webservers:" >> inventory
+    echo "      hosts:" >> inventory
+    echo "        web1:" >> inventory
+    echo "          ansible_host: 192.168.1.10" >> inventory
+    echo "---" > site.yml
+    echo "- name: Configure servers" >> site.yml
+    echo "  hosts: all" >> site.yml
+    echo "  become: yes" >> site.yml
+    echo "  roles:" >> site.yml
+    echo "    - common" >> site.yml
+}
+
+# Create a new Python package
+function pypkginit() {
+    mkdir $1
+    cd $1
+    mkdir $1
+    touch $1/__init__.py
+    touch setup.py
+    touch README.md
+    echo "# $1" > README.md
+    echo "from setuptools import setup, find_packages" > setup.py
+    echo "setup(" >> setup.py
+    echo "    name=\"$1\"," >> setup.py
+    echo "    version=\"0.1.0\"," >> setup.py
+    echo "    packages=find_packages()," >> setup.py
+    echo "    install_requires=[]," >> setup.py
+    echo "    author=\"Your Name\"," >> setup.py
+    echo "    author_email=\"your.email@example.com\"," >> setup.py
+    echo "    description=\"A short description of your package\"," >> setup.py
+    echo "    long_description=open('README.md').read()," >> setup.py
+    echo "    long_description_content_type=\"text/markdown\"," >> setup.py
+    echo "    url=\"https://github.com/yourusername/$1\"," >> setup.py
+    echo "    classifiers=[" >> setup.py
+    echo "        \"Programming Language :: Python :: 3\"," >> setup.py
+    echo "        \"License :: OSI Approved :: MIT License\"," >> setup.py
+    echo "        \"Operating System :: OS Independent\"," >> setup.py
+    echo "    ]," >> setup.py
+    echo "    python_requires='>=3.6'," >> setup.py
+    echo ")" >> setup.py
+}
