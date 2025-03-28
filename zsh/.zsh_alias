@@ -1,3 +1,142 @@
+# Navigation
+alias ..="cd .."
+alias ...="cd ../.."
+alias ....="cd ../../.."
+alias ~="cd ~"
+alias -- -="cd -"
+
+# Directory listing
+alias l="ls -la"
+alias ll="ls -l"
+alias la="ls -la"
+alias lt="ls --tree"
+alias lsize="ls -lSh"
+
+# Git aliases
+alias g="git"
+alias ga="git add"
+alias gc="git commit -m"
+alias gp="git push"
+alias gpl="git pull"
+alias gst="git status"
+alias gd="git diff"
+alias gco="git checkout"
+alias gb="git branch"
+alias gbl="git blame"
+alias gl="git log"
+alias gcl="git clone"
+alias gcp="git cherry-pick"
+alias gr="git reset"
+alias grh="git reset --hard"
+alias grs="git reset --soft"
+alias gstash="git stash"
+alias gpop="git stash pop"
+alias gapply="git stash apply"
+
+# Docker aliases
+alias d="docker"
+alias dc="docker-compose"
+alias dps="docker ps"
+alias dex="docker exec -it"
+alias dimg="docker images"
+alias dvol="docker volume ls"
+alias dnet="docker network ls"
+alias dlog="docker logs"
+alias dstop="docker stop"
+alias dstart="docker start"
+alias drm="docker rm"
+alias drmi="docker rmi"
+alias dprune="docker system prune"
+
+# Kubernetes aliases
+alias k="kubectl"
+alias kgp="kubectl get pods"
+alias kgs="kubectl get services"
+alias kgd="kubectl get deployments"
+alias kgn="kubectl get nodes"
+alias kgns="kubectl get namespaces"
+alias kdp="kubectl describe pod"
+alias kds="kubectl describe service"
+alias kdd="kubectl describe deployment"
+alias kdn="kubectl describe node"
+alias klogs="kubectl logs"
+alias kexec="kubectl exec -it"
+alias kctx="kubectx"
+alias kns="kubens"
+
+# npm/yarn/pnpm aliases
+alias ni="npm install"
+alias nid="npm install --save-dev"
+alias nig="npm install -g"
+alias nr="npm run"
+alias nrb="npm run build"
+alias nrd="npm run dev"
+alias nrt="npm run test"
+alias nrs="npm run start"
+alias y="yarn"
+alias yi="yarn install"
+alias ya="yarn add"
+alias yad="yarn add --dev"
+alias yr="yarn run"
+alias p="pnpm"
+alias pi="pnpm install"
+alias pa="pnpm add"
+alias pad="pnpm add -D"
+alias pr="pnpm run"
+
+# System aliases
+alias ports="lsof -i -P -n | grep LISTEN"
+alias path='echo $PATH | tr ":" "\n"'
+alias ip="ipconfig getifaddr en0"
+alias localip="ipconfig getifaddr en0"
+alias flushdns="dscacheutil -flushcache; sudo killall -HUP mDNSResponder"
+alias cleanup="find . -type f -name '*.DS_Store' -ls -delete"
+alias update="brew update && brew upgrade"
+alias cleanup-brew="brew cleanup"
+alias cleanup-npm="npm cache clean --force"
+alias cleanup-yarn="yarn cache clean"
+alias cleanup-pnpm="pnpm store prune"
+
+# VSCode aliases
+alias code.="code ."
+alias codei="code-insiders ."
+
+# Tmux aliases
+alias t="tmux"
+alias ta="tmux attach"
+alias tls="tmux ls"
+alias tn="tmux new -s"
+alias tk="tmux kill-session -t"
+
+# Misc aliases
+alias c="clear"
+alias h="history"
+alias j="jobs"
+alias v="vim"
+alias vi="vim"
+alias s="source"
+alias reload="source ~/.zshrc"
+alias path='echo $PATH | tr ":" "\n"'
+alias now='date +"%T"'
+alias nowdate='date +"%d-%m-%Y"'
+alias ports='netstat -tulanp'
+alias header='curl -I'
+alias headerc='curl -I --compress'
+alias mkdir='mkdir -pv'
+alias wget='wget -c'
+alias ping='ping -c 5'
+alias fastping='ping -c 100 -s.2'
+alias meminfo='free -m -l -t'
+alias cpuinfo='lscpu'
+alias mount='mount |column -t'
+alias df='df -h'
+alias du='du -h'
+alias free='free -m'
+alias nocomment='grep -Ev "^#" | grep -Ev "^$"'
+alias path='echo -e ${PATH//:/\\n}'
+alias now='date +"%T"'
+alias nowdate='date +"%d-%m-%Y"'
+
 #GIT
 alias gfp="git fetch --all && git pull --all"
 alias gb-del-local="git branch -D"
@@ -7,6 +146,8 @@ alias g-clean-local="git gc --prune=now"
 alias g-clean-remote="git remote prune origin"
 alias ggall="git branch -a | grep -v HEAD | perl -ne 'chomp($_); s|^\*?\s*||; if (m|(.+)/(.+)| && not $d{$2}) {print qq(git branch --track $2 $1/$2\n)} else {$d{$_}=1}' | csh -xfs"
 alias glol="git log --online"
+alias pnpmi="npx google-artifactregistry-auth && pnpm install"
+alias pistart="npx google-artifactregistry-auth && pnpm install && pnpm start"
 
 alias ceg="echo 'TE AMO'"
 
@@ -14,7 +155,6 @@ alias ceg="echo 'TE AMO'"
 alias npm-clear="rm -rf node_modules/ && rm -rf package-lock.json && rm -rf yarn.lock && rm -rf dist"
 
 #GLOBAL
-alias reload="exec zsh -l"
 alias m1="arch -arm64"
 alias x64="arch -x86_64"
 
