@@ -21,5 +21,5 @@ elif [[ "$platform" == 'macos' ]]; then
   arch -arm64 brew install font-jetbrains-mono-nerd-font --force
   arch -arm64 brew install google-chrome brave-browser choosy --force
   arch -arm64 brew install coconutbattery appcleaner stats itsycal rectangle --force
-  arch -arm64 brew install spotify visual-studio-code hyper --force
+  arch -arm64 brew install spotify visual-studio-code iterm2 --force
 fi
