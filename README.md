@@ -30,7 +30,7 @@
   - ZSH with Oh-My-ZSH
   - Custom aliases and functions
   - FZF for fuzzy finding
-  - NVM for Node.js version management
+  - FNM for Node.js version management
   - Bashtop for system monitoring
 
 - 🛠️ **Development Tools**
@@ -109,7 +109,7 @@ GITHUB_TOKEN=your_github_token_here
   - ZSH com Oh-My-ZSH
   - Aliases e funções personalizadas
   - FZF para busca fuzzy
-  - NVM para gerenciamento de versões do Node.js
+  - FNM para gerenciamento de versões do Node.js
   - Bashtop para monitoramento do sistema
 
 - 🛠️ **Ferramentas de Desenvolvimento**
