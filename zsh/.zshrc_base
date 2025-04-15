@@ -50,10 +50,8 @@ source $DFL/zsh/.zsh_gcloud
 # PATH configurations
 export PATH="/usr/local/sbin:$PATH"
 
-# NVM configuration
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"
-[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+# FNM configuration
+eval "$(fnm env --use-on-cd --shell zsh)"
 
 # pnpm configuration
 export PNPM_HOME="${HOME}/Library/pnpm"
@@ -66,7 +64,7 @@ esac
 eval "$(direnv hook zsh)"
 
 # Set default Node version
-nvm use default > /dev/null 2>&1
+fnm use lts/latest
 
 # Enable Powerlevel10k instant prompt
 if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then

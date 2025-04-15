@@ -29,9 +29,8 @@ chmod +x $(pwd)/configs/secrets.sh
 chmod +x $(pwd)/installers/*.sh
 
 source $(pwd)/configs/git.sh
-source $(pwd)/installers/package-manager.sh
 source $(pwd)/installers/base.sh
-source $(pwd)/installers/nvm.sh
+source $(pwd)/installers/package-manager.sh
 source $(pwd)/installers/omzsh.sh
 source $(pwd)/installers/fzf.sh
 source $(pwd)/installers/bashtop.sh
