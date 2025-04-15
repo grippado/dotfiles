@@ -64,7 +64,7 @@ esac
 eval "$(direnv hook zsh)"
 
 # Set default Node version
-fnm use lts/latest
+fnm use lts/latest --quiet
 
 # Enable Powerlevel10k instant prompt
 if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
