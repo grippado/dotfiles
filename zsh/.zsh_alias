@@ -16,6 +16,7 @@ alias lsize="ls -lSh"
 alias g="git"
 alias ga="git add"
 alias gc="git commit -m"
+alias gca="git commit -am"
 alias gp="git push"
 alias gpl="git pull"
 alias gst="git status"
@@ -32,6 +33,17 @@ alias grs="git reset --soft"
 alias gstash="git stash"
 alias gpop="git stash pop"
 alias gapply="git stash apply"
+alias gpoh="git push origin HEAD"
+alias gpohu="git push -u origin HEAD"
+alias gpom="git pull origin main"
+alias gfp="git fetch --all && git pull --all"
+alias gb-del-local="git branch -D"
+alias gb-del-remote="git push origin --delete"
+alias g-clean="git gc --prune=now && git remote prune origin"
+alias g-clean-local="git gc --prune=now"
+alias g-clean-remote="git remote prune origin"
+alias ggall="git branch -a | grep -v HEAD | perl -ne 'chomp($_); s|^\*?\s*||; if (m|(.+)/(.+)| && not $d{$2}) {print qq(git branch --track $2 $1/$2\n)} else {$d{$_}=1}' | csh -xfs"
+alias glol="git log --online"
 
 # Docker aliases
 alias d="docker"
@@ -137,18 +149,6 @@ alias path='echo -e ${PATH//:/\\n}'
 alias now='date +"%T"'
 alias nowdate='date +"%d-%m-%Y"'
 
-#GIT
-alias gfp="git fetch --all && git pull --all"
-alias gb-del-local="git branch -D"
-alias gb-del-remote="git push origin --delete"
-alias g-clean="git gc --prune=now && git remote prune origin"
-alias g-clean-local="git gc --prune=now"
-alias g-clean-remote="git remote prune origin"
-alias ggall="git branch -a | grep -v HEAD | perl -ne 'chomp($_); s|^\*?\s*||; if (m|(.+)/(.+)| && not $d{$2}) {print qq(git branch --track $2 $1/$2\n)} else {$d{$_}=1}' | csh -xfs"
-alias glol="git log --online"
-alias pnpmi="npx google-artifactregistry-auth && pnpm install"
-alias pistart="npx google-artifactregistry-auth && pnpm install && pnpm start"
-
 #NPM
 alias npm-clear="rm -rf node_modules/ && rm -rf package-lock.json && rm -rf yarn.lock && rm -rf dist"
 
@@ -169,3 +169,13 @@ alias brew-up="brew upgrade"
 
 #DEV
 alias serverhere="python3 -m http.server 8088"
+
+#ISAAC
+alias pnpmi="npx google-artifactregistry-auth && pnpm install"
+alias pistart="npx google-artifactregistry-auth && pnpm install && pnpm start"
+
+alias openpi="cd ~/www/isaac/backoffice"
+alias openbff="cd ~/www/isaac/backoffice-bff"
+alias openproxy="cd ~/www/isaac/backoffice-local-proxy"
+alias opendash="cd ~/www/isaac/gravity-design-system"
+alias openmonorepo="cd ~/www/isaac/rf-monorepo"

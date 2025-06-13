@@ -73,3 +73,11 @@ fi
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+
+# PSQL
+export PATH="/opt/homebrew/Cellar/postgresql@15/15.12_1/bin:$PATH"
+
+# GO
+export GOROOT="/usr/local/go"
+export GOPATH="$HOME/Documents/go"
+export PATH="$GOPATH/bin:$GOROOT/bin:$PATH"
