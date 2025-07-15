@@ -209,3 +209,279 @@ function pypkginit() {
     echo "    python_requires='>=3.6'," >> setup.py
     echo ")" >> setup.py
 }
+
+# Enhanced ls with file preview (no hidden files)
+function lsp() {
+    # Get all items (files and directories) excluding hidden files
+    local items=$(ls -1 2>/dev/null | sort)
+    
+    # If no items found, show message
+    if [[ -z "$items" ]]; then
+        echo "Empty directory"
+        return
+    fi
+    
+    # Use fzf to browse with enhanced preview
+    echo "$items" | fzf \
+        --height=80% \
+        --layout=reverse \
+        --border \
+        --preview-window=right:60% \
+        --preview='
+            if [[ -d {} ]]; then
+                echo "📁 Directory: {}"
+                echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                
+                # Check if directory is readable
+                if [[ -r {} ]]; then
+                    size=$(du -sh {} 2>/dev/null | cut -f1)
+                    if [[ -n "$size" ]]; then
+                        echo "📊 Size: $size"
+                    else
+                        echo "📊 Size: calculating..."
+                    fi
+                    
+                    count=$(find {} -maxdepth 1 2>/dev/null | wc -l | tr -d " ")
+                    if [[ $count -gt 1 ]]; then
+                        echo "📈 Items: $((count - 1)) files/folders"
+                    else
+                        echo "📈 Items: 0 files/folders"
+                    fi
+                    
+                    echo ""
+                    echo "📄 Contents:"
+                    
+                    # Try different listing approaches
+                    if ls -la {} >/dev/null 2>&1; then
+                        ls -la {} 2>/dev/null | head -15
+                        remaining=$(ls -1 {} 2>/dev/null | wc -l | tr -d " ")
+                        if [[ $remaining -gt 15 ]]; then
+                            echo "..."
+                            echo "... and $((remaining - 15)) more items"
+                        fi
+                    elif find {} -maxdepth 1 >/dev/null 2>&1; then
+                        echo "Using find (ls failed):"
+                        find {} -maxdepth 1 -not -path {} 2>/dev/null | head -15 | sed "s|^{}/||"
+                    else
+                        echo "❌ Cannot access directory contents"
+                    fi
+                else
+                    echo "❌ Permission denied - cannot read directory"
+                    echo "📊 Size: unknown"
+                    echo "📈 Items: unknown"
+                fi
+            else
+                echo "📄 File: {}"
+                echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                
+                # File size and permissions
+                if [[ -r {} ]]; then
+                    size=$(ls -lh {} 2>/dev/null | awk "{print \$5}")
+                    echo "📊 Size: ${size:-unknown}"
+                    filetype=$(file -b {} 2>/dev/null)
+                    echo "🔍 Type: ${filetype:-unknown}"
+                    echo ""
+                    echo "📄 Preview:"
+                    
+                    # Enhanced file type detection and preview
+                    if [[ -f {} ]]; then
+                        case "${{}##*.}" in
+                            txt|md|markdown|readme|README)
+                                head -20 {} 2>/dev/null || echo "Cannot read file"
+                                ;;
+                            json|js|ts|jsx|tsx|py|sh|zsh|bash|yml|yaml|xml|html|css|scss|sass)
+                                head -20 {} 2>/dev/null || echo "Cannot read file"
+                                ;;
+                            jpg|jpeg|png|gif|bmp|svg|ico)
+                                echo "🖼️  Image file - cannot preview in terminal"
+                                echo "📐 Try: open {} (to view)"
+                                ;;
+                            pdf)
+                                echo "📋 PDF file - cannot preview in terminal"
+                                echo "📖 Try: open {} (to view)"
+                                ;;
+                            zip|tar|gz|7z|rar)
+                                echo "🗜️  Archive file"
+                                if command -v unzip >/dev/null && [[ {} == *.zip ]]; then
+                                    echo "Contents:"
+                                    unzip -l {} 2>/dev/null | head -10
+                                elif command -v tar >/dev/null && [[ {} == *.tar* ]]; then
+                                    echo "Contents:"
+                                    tar -tf {} 2>/dev/null | head -10
+                                fi
+                                ;;
+                            *)
+                                if [[ $(file -b {} 2>/dev/null) == *"text"* ]]; then
+                                    head -20 {} 2>/dev/null || echo "Cannot read file"
+                                elif [[ $(file -b {} 2>/dev/null) == *"binary"* ]]; then
+                                    echo "🔢 Binary file - cannot preview"
+                                    echo "🔍 File type: $(file -b {} 2>/dev/null)"
+                                else
+                                    head -10 {} 2>/dev/null || echo "Cannot determine file type"
+                                fi
+                                ;;
+                        esac
+                    else
+                        echo "❓ Unknown file type"
+                    fi
+                else
+                    echo "❌ Permission denied - cannot read file"
+                fi
+            fi
+        ' \
+        --header='📁 Browse files and directories (ENTER to select, ESC to cancel)' \
+        --prompt='Browse> ' \
+        --bind='enter:execute(
+            if [[ -d {} ]]; then
+                echo "📁 Entering directory: {}"
+                cd {} && pwd && echo "" && ls -la
+            else
+                echo "📄 Opening file: {}"
+                if command -v open >/dev/null; then
+                    open {}
+                elif command -v xdg-open >/dev/null; then
+                    xdg-open {}
+                else
+                    echo "❌ Cannot open file - no suitable command found"
+                fi
+            fi
+        )'
+}
+
+# Enhanced ls with file preview (including hidden files)
+function lsph() {
+    # Get all items (files and directories) including hidden files
+    local items=$(ls -1A 2>/dev/null | sort)
+    
+    # If no items found, show message
+    if [[ -z "$items" ]]; then
+        echo "Empty directory"
+        return
+    fi
+    
+    # Use fzf to browse with enhanced preview
+    echo "$items" | fzf \
+        --height=80% \
+        --layout=reverse \
+        --border \
+        --preview-window=right:60% \
+        --preview='
+            if [[ -d {} ]]; then
+                echo "📁 Directory: {}"
+                echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                
+                # Check if directory is readable
+                if [[ -r {} ]]; then
+                    size=$(du -sh {} 2>/dev/null | cut -f1)
+                    if [[ -n "$size" ]]; then
+                        echo "📊 Size: $size"
+                    else
+                        echo "📊 Size: calculating..."
+                    fi
+                    
+                    count=$(find {} -maxdepth 1 2>/dev/null | wc -l | tr -d " ")
+                    if [[ $count -gt 1 ]]; then
+                        echo "📈 Items: $((count - 1)) files/folders"
+                    else
+                        echo "📈 Items: 0 files/folders"
+                    fi
+                    
+                    echo ""
+                    echo "📄 Contents (including hidden):"
+                    
+                    # Try different listing approaches with hidden files
+                    if ls -laA {} >/dev/null 2>&1; then
+                        ls -laA {} 2>/dev/null | head -15
+                        remaining=$(ls -1A {} 2>/dev/null | wc -l | tr -d " ")
+                        if [[ $remaining -gt 15 ]]; then
+                            echo "..."
+                            echo "... and $((remaining - 15)) more items"
+                        fi
+                    elif find {} -maxdepth 1 >/dev/null 2>&1; then
+                        echo "Using find (ls failed):"
+                        find {} -maxdepth 1 -not -path {} 2>/dev/null | head -15 | sed "s|^{}/||"
+                    else
+                        echo "❌ Cannot access directory contents"
+                    fi
+                else
+                    echo "❌ Permission denied - cannot read directory"
+                    echo "📊 Size: unknown"
+                    echo "📈 Items: unknown"
+                fi
+            else
+                echo "📄 File: {}"
+                echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                
+                # File size and permissions
+                if [[ -r {} ]]; then
+                    size=$(ls -lh {} 2>/dev/null | awk "{print \$5}")
+                    echo "📊 Size: ${size:-unknown}"
+                    filetype=$(file -b {} 2>/dev/null)
+                    echo "🔍 Type: ${filetype:-unknown}"
+                    echo ""
+                    echo "📄 Preview:"
+                    
+                    # Enhanced file type detection and preview
+                    if [[ -f {} ]]; then
+                        case "${{}##*.}" in
+                            txt|md|markdown|readme|README)
+                                head -20 {} 2>/dev/null || echo "Cannot read file"
+                                ;;
+                            json|js|ts|jsx|tsx|py|sh|zsh|bash|yml|yaml|xml|html|css|scss|sass)
+                                head -20 {} 2>/dev/null || echo "Cannot read file"
+                                ;;
+                            jpg|jpeg|png|gif|bmp|svg|ico)
+                                echo "🖼️  Image file - cannot preview in terminal"
+                                echo "📐 Try: open {} (to view)"
+                                ;;
+                            pdf)
+                                echo "📋 PDF file - cannot preview in terminal"
+                                echo "📖 Try: open {} (to view)"
+                                ;;
+                            zip|tar|gz|7z|rar)
+                                echo "🗜️  Archive file"
+                                if command -v unzip >/dev/null && [[ {} == *.zip ]]; then
+                                    echo "Contents:"
+                                    unzip -l {} 2>/dev/null | head -10
+                                elif command -v tar >/dev/null && [[ {} == *.tar* ]]; then
+                                    echo "Contents:"
+                                    tar -tf {} 2>/dev/null | head -10
+                                fi
+                                ;;
+                            *)
+                                if [[ $(file -b {} 2>/dev/null) == *"text"* ]]; then
+                                    head -20 {} 2>/dev/null || echo "Cannot read file"
+                                elif [[ $(file -b {} 2>/dev/null) == *"binary"* ]]; then
+                                    echo "🔢 Binary file - cannot preview"
+                                    echo "🔍 File type: $(file -b {} 2>/dev/null)"
+                                else
+                                    head -10 {} 2>/dev/null || echo "Cannot determine file type"
+                                fi
+                                ;;
+                        esac
+                    else
+                        echo "❓ Unknown file type"
+                    fi
+                else
+                    echo "❌ Permission denied - cannot read file"
+                fi
+            fi
+        ' \
+        --header='📁 Browse files and directories with hidden files (ENTER to select, ESC to cancel)' \
+        --prompt='Browse+Hidden> ' \
+        --bind='enter:execute(
+            if [[ -d {} ]]; then
+                echo "📁 Entering directory: {}"
+                cd {} && pwd && echo "" && ls -laA
+            else
+                echo "📄 Opening file: {}"
+                if command -v open >/dev/null; then
+                    open {}
+                elif command -v xdg-open >/dev/null; then
+                    xdg-open {}
+                else
+                    echo "❌ Cannot open file - no suitable command found"
+                fi
+            fi
+        )'
+}
