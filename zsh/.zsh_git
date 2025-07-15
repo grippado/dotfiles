@@ -1,0 +1,360 @@
+#!/bin/zsh
+
+# Git functions with Conventional Commits support
+# Based on: https://www.conventionalcommits.org/
+
+# Interactive commit function using Conventional Commits
+function commit() {
+    # Check if we're in a git repository
+    if ! git rev-parse --git-dir > /dev/null 2>&1; then
+        echo "❌ Error: Not in a git repository"
+        return 1
+    fi
+
+    # Check if there are changes to commit
+    if git diff --quiet && git diff --cached --quiet; then
+        echo "⚠️  No changes to commit"
+        return 1
+    fi
+
+    # Define commit types with descriptions based on Conventional Commits
+    # Emojis from: https://gist.github.com/parmentf/359667bf23e08a1bd8241fbf47ecdef0
+    local types=(
+        "feat:✨ Introduce new features"
+        "fix:🐛 Fix a bug"
+        "docs:📚 Add or update documentation"
+        "style:💄 Add or update the UI and style files"
+        "refactor:♻️ Refactor code"
+        "perf:⚡️ Improve performance"
+        "test:✅ Add or update tests"
+        "build:👷 Add or update the build system"
+        "ci:💚 Fix CI Build"
+        "chore:🔧 Add or update development tools"
+        "revert:⏪️ Revert changes"
+        "wip:🚧 Work in progress"
+        "hotfix:🚑️ Critical hotfix"
+        "deploy:🚀 Deploy stuff"
+        "config:🔧 Add or update configuration files"
+        "security:🔒️ Fix security issues"
+        "upgrade:⬆️ Upgrade dependencies"
+        "downgrade:⬇️ Downgrade dependencies"
+        "lint:🎨 Improve structure / format of the code"
+        "typo:✏️ Fix typos"
+        "remove:🔥 Remove code or files"
+        "merge:🔀 Merge branches"
+        "breaking:💥 Introduce breaking changes"
+        "analytics:📈 Add or update analytics or track code"
+        "i18n:🌐 Internationalization and localization"
+        "init:🎉 Begin a project"
+    )
+
+    # Use fzf to select commit type
+    local selected_type=$(printf '%s\n' "${types[@]}" | fzf \
+        --height=50% \
+        --layout=reverse \
+        --border \
+        --prompt="Select commit type: " \
+        --header="🎯 Choose the type of change you're committing" \
+        --preview='
+            type=$(echo {} | cut -d: -f1)
+            desc=$(echo {} | cut -d: -f2-)
+            echo "Type: $type"
+            echo "Description: $desc"
+            echo ""
+                         echo "Examples:"
+             case $type in
+                 "feat")
+                     echo "• ✨ feat: add user authentication"
+                     echo "• ✨ feat(api): add new endpoint for users"
+                     echo "• ✨ feat!: change API response format"
+                     ;;
+                 "fix")
+                     echo "• 🐛 fix: resolve login issue"
+                     echo "• 🐛 fix(auth): handle null tokens properly"
+                     echo "• 🐛 fix!: correct breaking API change"
+                     ;;
+                 "docs")
+                     echo "• 📚 docs: update README with new examples"
+                     echo "• 📚 docs(api): add endpoint documentation"
+                     ;;
+                 "style")
+                     echo "• 💄 style: improve button styling"
+                     echo "• 💄 style: update color scheme"
+                     ;;
+                 "refactor")
+                     echo "• ♻️ refactor: simplify user validation logic"
+                     echo "• ♻️ refactor(auth): extract common functions"
+                     ;;
+                 "perf")
+                     echo "• ⚡️ perf: optimize database queries"
+                     echo "• ⚡️ perf(api): cache frequent requests"
+                     ;;
+                 "test")
+                     echo "• ✅ test: add unit tests for auth module"
+                     echo "• ✅ test(api): add integration tests"
+                     ;;
+                 "build")
+                     echo "• 👷 build: update webpack configuration"
+                     echo "• 👷 build: add new build target"
+                     ;;
+                 "ci")
+                     echo "• 💚 ci: fix GitHub Actions workflow"
+                     echo "• 💚 ci: add automated testing"
+                     ;;
+                 "chore")
+                     echo "• 🔧 chore: update dependencies"
+                     echo "• 🔧 chore: configure prettier"
+                     ;;
+                 "revert")
+                     echo "• ⏪️ revert: undo previous breaking change"
+                     echo "• ⏪️ revert: rollback version update"
+                     ;;
+                 "wip")
+                     echo "• 🚧 wip: implementing new feature"
+                     echo "• 🚧 wip: work in progress on refactor"
+                     ;;
+                 "hotfix")
+                     echo "• 🚑️ hotfix: critical security patch"
+                     echo "• 🚑️ hotfix: fix production crash"
+                     ;;
+                 "deploy")
+                     echo "• 🚀 deploy: release version 2.0.0"
+                     echo "• 🚀 deploy: deploy to production"
+                     ;;
+                 "config")
+                     echo "• 🔧 config: update database settings"
+                     echo "• 🔧 config: add environment variables"
+                     ;;
+                 "security")
+                     echo "• 🔒️ security: fix XSS vulnerability"
+                     echo "• 🔒️ security: update authentication"
+                     ;;
+                 "upgrade")
+                     echo "• ⬆️ upgrade: bump React to v18"
+                     echo "• ⬆️ upgrade: update all dependencies"
+                     ;;
+                 "downgrade")
+                     echo "• ⬇️ downgrade: rollback Node.js version"
+                     echo "• ⬇️ downgrade: revert dependency update"
+                     ;;
+                 "lint")
+                     echo "• 🎨 lint: fix eslint warnings"
+                     echo "• 🎨 lint: format code with prettier"
+                     ;;
+                 "typo")
+                     echo "• ✏️ typo: fix spelling in comments"
+                     echo "• ✏️ typo: correct variable names"
+                     ;;
+                 "remove")
+                     echo "• 🔥 remove: delete unused components"
+                     echo "• 🔥 remove: clean up dead code"
+                     ;;
+                 "merge")
+                     echo "• 🔀 merge: integrate feature branch"
+                     echo "• 🔀 merge: resolve conflicts"
+                     ;;
+                 "breaking")
+                     echo "• 💥 breaking: change API response format"
+                     echo "• 💥 breaking: remove deprecated methods"
+                     ;;
+                 "analytics")
+                     echo "• 📈 analytics: add user tracking"
+                     echo "• 📈 analytics: implement metrics"
+                     ;;
+                 "i18n")
+                     echo "• 🌐 i18n: add French translations"
+                     echo "• 🌐 i18n: support multiple languages"
+                     ;;
+                 "init")
+                     echo "• 🎉 init: initial project setup"
+                     echo "• 🎉 init: bootstrap new application"
+                     ;;
+                 *)
+                     echo "• $type: example commit message"
+                     ;;
+             esac
+        ')
+
+    # Exit if no type was selected
+    if [[ -z "$selected_type" ]]; then
+        echo "❌ No commit type selected. Aborting."
+        return 1
+    fi
+
+    # Extract the commit type
+    local commit_type=$(echo "$selected_type" | cut -d: -f1)
+    
+    # Ask for optional scope
+    echo "📋 Enter scope (optional - press Enter to skip):"
+    echo "   Examples: api, auth, ui, database, config"
+    printf "   Scope: "
+    read -r scope
+
+    # Ask for breaking change indicator
+    local breaking_change=""
+    echo ""
+    echo "💥 Is this a breaking change? (y/N):"
+    printf "   Breaking: "
+    read -r is_breaking
+    if [[ "$is_breaking" =~ ^[Yy]$ ]]; then
+        breaking_change="!"
+    fi
+
+    # Build the commit prefix
+    local commit_prefix="$commit_type"
+    if [[ -n "$scope" ]]; then
+        commit_prefix="${commit_type}(${scope})"
+    fi
+    commit_prefix="${commit_prefix}${breaking_change}: "
+
+    # Ask for commit message
+    echo ""
+    echo "✍️  Enter your commit message:"
+    echo "   Format: ${commit_prefix}<description>"
+    printf "   Message: "
+    read -r commit_message
+
+    # Validate commit message
+    if [[ -z "$commit_message" ]]; then
+        echo "❌ Commit message cannot be empty. Aborting."
+        return 1
+    fi
+
+    # Build full commit message
+    local full_commit_message="${commit_prefix}${commit_message}"
+
+    # Ask for optional body
+    echo ""
+    echo "📝 Enter additional details (optional - press Enter to skip):"
+    echo "   This will be added as the commit body"
+    printf "   Details: "
+    read -r commit_body
+
+    # Ask for breaking change description if needed
+    local breaking_change_desc=""
+    if [[ "$is_breaking" =~ ^[Yy]$ ]]; then
+        echo ""
+        echo "💥 Describe the breaking change:"
+        printf "   BREAKING CHANGE: "
+        read -r breaking_change_desc
+    fi
+
+    # Build the complete commit message
+    local final_commit_message="$full_commit_message"
+    
+    if [[ -n "$commit_body" ]] || [[ -n "$breaking_change_desc" ]]; then
+        final_commit_message="$final_commit_message\n"
+        
+        if [[ -n "$commit_body" ]]; then
+            final_commit_message="$final_commit_message\n$commit_body"
+        fi
+        
+        if [[ -n "$breaking_change_desc" ]]; then
+            final_commit_message="$final_commit_message\n\nBREAKING CHANGE: $breaking_change_desc"
+        fi
+    fi
+
+    # Show preview of the commit
+    echo ""
+    echo "📋 Commit Preview:"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo -e "$final_commit_message"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+
+    # Ask for confirmation
+    echo "❓ Proceed with this commit? (Y/n):"
+    printf "   Confirm: "
+    read -r confirm
+
+    if [[ "$confirm" =~ ^[Nn]$ ]]; then
+        echo "❌ Commit cancelled."
+        return 1
+    fi
+
+    # Execute the commit
+    echo "🚀 Committing changes..."
+    if git commit -am "$final_commit_message"; then
+        echo "✅ Commit successful!"
+        echo ""
+        echo "📊 Recent commits:"
+        git log --oneline -5 --decorate --color=always
+    else
+        echo "❌ Commit failed!"
+        return 1
+    fi
+}
+
+# Quick commit function for simple changes
+function qcommit() {
+    if [[ $# -eq 0 ]]; then
+        echo "Usage: qcommit <message>"
+        echo "Example: qcommit 'fix: resolve login issue'"
+        return 1
+    fi
+    
+    git commit -am "$*"
+}
+
+# Commit with automatic type detection based on changed files
+function smartcommit() {
+    # Check if we're in a git repository
+    if ! git rev-parse --git-dir > /dev/null 2>&1; then
+        echo "❌ Error: Not in a git repository"
+        return 1
+    fi
+
+    # Get changed files
+    local changed_files=$(git diff --name-only --cached)
+    if [[ -z "$changed_files" ]]; then
+        changed_files=$(git diff --name-only)
+    fi
+
+    if [[ -z "$changed_files" ]]; then
+        echo "⚠️  No changes to commit"
+        return 1
+    fi
+
+    # Suggest commit type based on files
+    local suggested_type="chore"
+    
+    if echo "$changed_files" | grep -q -E "\.(md|txt|rst|adoc)$|README|CHANGELOG|docs/"; then
+        suggested_type="docs"
+    elif echo "$changed_files" | grep -q -E "test|spec|\.(test|spec)\.(js|ts|py|rb|go|java)$"; then
+        suggested_type="test"
+    elif echo "$changed_files" | grep -q -E "package\.json|yarn\.lock|Gemfile|requirements\.txt|composer\.json|Cargo\.toml|go\.mod"; then
+        suggested_type="upgrade"
+    elif echo "$changed_files" | grep -q -E "\.(css|scss|sass|less|styl)$|styles/"; then
+        suggested_type="style"
+    elif echo "$changed_files" | grep -q -E "\.config\.|config/|\.env|\.(yml|yaml|toml|ini)$"; then
+        suggested_type="config"
+    elif echo "$changed_files" | grep -q -E "\.github/|\.gitlab-ci\.|Jenkinsfile|\.travis\.yml|circle\.yml"; then
+        suggested_type="ci"
+    elif echo "$changed_files" | grep -q -E "Dockerfile|docker-compose|\.dockerignore"; then
+        suggested_type="build"
+    elif echo "$changed_files" | grep -q -E "webpack|rollup|vite|parcel|babel|eslint|prettier"; then
+        suggested_type="build"
+    elif echo "$changed_files" | grep -q -E "\.(js|ts|jsx|tsx|py|rb|go|java|cpp|c|php|rs)$"; then
+        suggested_type="feat"
+    elif echo "$changed_files" | grep -q -E "locales/|i18n/|translations/|\.(po|pot|mo)$"; then
+        suggested_type="i18n"
+    fi
+
+    echo "🤖 Smart commit suggestion based on changed files:"
+    echo "   Changed files: $(echo "$changed_files" | tr '\n' ', ' | sed 's/,$//')"
+    echo "   Suggested type: $suggested_type"
+    echo ""
+
+    # Call the interactive commit function
+    commit
+}
+
+function branch_new() {
+    if [[ $# -eq 0 ]]; then
+        echo "Usage: branch_new <branch_name>"
+        echo "Example: branch_new 'feature/add-user-authentication'"
+        return 1
+    fi
+
+    git checkout -b "$1"
+}
