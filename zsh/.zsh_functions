@@ -485,3 +485,9 @@ function lsph() {
             fi
         )'
 }
+
+# GRAVITY-DS FUNCTIONS
+
+function runds() {
+    pnpmi && pnpm lint --filter=@gravity/$1 && pnpm build --filter=@gravity/$1 && pnpm dev --filter=@gravity/$1
+}
