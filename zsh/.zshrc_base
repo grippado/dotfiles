@@ -88,7 +88,6 @@ export GOROOT="/usr/local/go"
 export GOPATH="$HOME/Documents/go"
 export PATH="$GOPATH/bin:$GOROOT/bin:$PATH"
 
-
 # Google Cloud SDK
 source "${HOME}/.google-cloud-sdk/path.zsh.inc"
 source "${HOME}/.google-cloud-sdk/completion.zsh.inc"
@@ -96,4 +95,3 @@ source "${HOME}/.google-cloud-sdk/completion.zsh.inc"
 # JAVA HOME
 export JAVA_HOME="/opt/homebrew/opt/openjdk@21"
 export PATH="$JAVA_HOME/bin:$PATH"
-
