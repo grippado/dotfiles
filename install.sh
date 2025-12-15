@@ -36,10 +36,6 @@ source $(pwd)/installers/fzf.sh
 source $(pwd)/installers/bashtop.sh
 source $(pwd)/installers/zsh-plugins.sh
 
-# declaring variables to install dependencies
-wakatime=''
-bettervim=''
-
 echo "Creating config files"
 rm -rf ~/.zshrc
 touch ~/.zshrc

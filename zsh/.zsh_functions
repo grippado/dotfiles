@@ -489,5 +489,28 @@ function lsph() {
 # GRAVITY-DS FUNCTIONS
 
 function runds() {
+    pnpm lint --filter=@gravity/$1 && cd components/$1 && pnpm test:run && cd ../.. && pnpm build --filter=@gravity/$1 && pnpm dev --filter=@gravity/$1
+    local original_path=$(pwd)
+    
+    if ! pnpm test:run; then
+        echo "❌ Tests failed, returning to original path"
+        cd "$original_path"
+        return 1
+    fi
+}
+
+function rundsnt() {
+    pnpm lint --filter=@gravity/$1 && pnpm build --filter=@gravity/$1 && pnpm dev --filter=@gravity/$1 
+}
+
+function rundsdocs() {
+    pnpm lint --filter=@gravity/docs && pnpm build --filter=@gravity/docs && pnpm dev --filter=@gravity/docs
+}
+
+function runinstallds() {
     pnpmi && pnpm lint --filter=@gravity/$1 && pnpm build --filter=@gravity/$1 && pnpm dev --filter=@gravity/$1
+}
+
+function runapp() {
+    pnpm dev --filter=@monorepo/home --filter=@monorepo/auth --filter=@monorepo/messages
 }

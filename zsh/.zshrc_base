@@ -11,15 +11,15 @@ ZSH_THEME="powerlevel10k/powerlevel10k"
 plugins=(
     git
     node
+    npm
+    yarn
     fzf
-    wakatime
     zsh-autosuggestions
     zsh-syntax-highlighting
     docker
     docker-compose
     kubectl
-    npm
-    yarn
+    gcloud
     pip
     python
     brew
@@ -29,7 +29,6 @@ plugins=(
     rust
     aws
     terraform
-    gcloud
     helm
     minikube
     kubectx
@@ -44,6 +43,7 @@ source $DFL/zsh/.zsh_alias
 source $DFL/zsh/.zsh_functions
 source $DFL/zsh/.zsh_git
 source $DFL/zsh/.zsh_gcloud
+source $DFL/zsh/.zsh_aws
 
 # Load FZF
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
@@ -51,8 +51,10 @@ source $DFL/zsh/.zsh_gcloud
 # PATH configurations
 export PATH="/usr/local/sbin:$PATH"
 
-# FNM configuration
-eval "$(fnm env --use-on-cd --shell zsh)"
+
+
+# cursor-agent
+export PATH="$HOME/.local/bin:$PATH"
 
 # pnpm configuration
 export PNPM_HOME="${HOME}/Library/pnpm"
@@ -63,6 +65,9 @@ esac
 
 # direnv configuration
 eval "$(direnv hook zsh)"
+
+# FNM configuration
+eval "$(fnm env --use-on-cd --shell zsh)"
 
 # Set default Node version
 fnm use lts/latest > /dev/null 2>&1
@@ -82,3 +87,13 @@ export PATH="/opt/homebrew/Cellar/postgresql@15/15.12_1/bin:$PATH"
 export GOROOT="/usr/local/go"
 export GOPATH="$HOME/Documents/go"
 export PATH="$GOPATH/bin:$GOROOT/bin:$PATH"
+
+
+# Google Cloud SDK
+source "${HOME}/.google-cloud-sdk/path.zsh.inc"
+source "${HOME}/.google-cloud-sdk/completion.zsh.inc"
+
+# JAVA HOME
+export JAVA_HOME="/opt/homebrew/opt/openjdk@21"
+export PATH="$JAVA_HOME/bin:$PATH"
+
