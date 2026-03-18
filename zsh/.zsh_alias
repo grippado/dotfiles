@@ -177,32 +177,10 @@ alias back3="cd ../../.."
 alias back4="cd ../../../.."
 alias back5="cd ../../../../.."
 
-#ISAAC
+#claude
+alias calude="claude"
+alias claudinho="claude"
+alias cl="claude"
 
-## PI
-alias pnpmi="npx google-artifactregistry-auth && pnpm install"
-alias start-pi='orig_pwd="$(pwd)"; cd ~/www/isaac/backoffice && npx google-artifactregistry-auth && pnpm install && pnpm start; cd "$orig_pwd"'
-alias test-pi='orig_pwd="$(pwd)"; cd ~/www/isaac/backoffice/modules/messages && pnpm test; cd "$orig_pwd"'
-alias lint-pi='orig_pwd="$(pwd)"; cd ~/www/isaac/backoffice/modules/messages && pnpm lint; cd "$orig_pwd"'
-alias typecheck-pi='orig_pwd="$(pwd)"; cd ~/www/isaac/backoffice/modules/messages && pnpm typecheck; cd "$orig_pwd"'
-
-## BFF
-alias start-bff="yarn && yarn start"
-alias test-bff='orig_pwd="$(pwd)"; cd ~/www/isaac/backoffice-bff/src/modules/communication && pnpm test; cd "$orig_pwd"'
-alias lint-bff='orig_pwd="$(pwd)"; cd ~/www/isaac/backoffice-bff/src/modules/communication && pnpm lint; cd "$orig_pwd"'
-alias typecheck-bff='orig_pwd="$(pwd)"; cd ~/www/isaac/backoffice-bff/src/modules/communication && pnpm typecheck; cd "$orig_pwd"'
-
-## PROXY
-alias start-proxy="yarn && yarn dev"
-
-## RF
-alias start-rf='orig_pwd="$(pwd)"; npx google-artifactregistry-auth && pnpm install && pnpm dev --filter=@monorepo/home --filter=@monorepo/auth --filter=@monorepo/messages; cd "$orig_pwd"'
-alias test-rf='orig_pwd="$(pwd)"; pnpm test --filter=@monorepo/home --filter=@monorepo/auth --filter=@monorepo/messages; cd "$orig_pwd"'
-alias lint-rf='orig_pwd="$(pwd)"; pnpm lint --filter=@monorepo/home --filter=@monorepo/auth --filter=@monorepo/messages; cd "$orig_pwd"'
-alias typecheck-rf='orig_pwd="$(pwd)"; pnpm typecheck --filter=@monorepo/home --filter=@monorepo/auth --filter=@monorepo/messages; cd "$orig_pwd"'
-
-## COMMAPI
-alias start-commapi='orig_pwd="$(pwd)"; npx google-artifactregistry-auth && pnpm install && NODE_ENV=development tsx watch src/server.ts; cd "$orig_pwd"'
-alias test-commapi='orig_pwd="$(pwd)"; cd ~/www/isaac/communication-api && pnpm test; cd "$orig_pwd"'
-alias lint-commapi='orig_pwd="$(pwd)"; cd ~/www/isaac/communication-api && pnpm lint; cd "$orig_pwd"'
-alias typecheck-commapi='orig_pwd="$(pwd)"; cd ~/www/isaac/communication-api && pnpm typecheck; cd "$orig_pwd"'
+# Load local/org-specific aliases if available
+[ -f "$HOME/.zsh_aliases_local" ] && source "$HOME/.zsh_aliases_local"
