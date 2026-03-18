@@ -1,0 +1,12 @@
+# Local overrides (never commit)
+*.local
+.secrets
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+*.swp
+*.swo
+*~

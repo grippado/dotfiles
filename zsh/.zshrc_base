@@ -42,18 +42,12 @@ source $ZSH/oh-my-zsh.sh
 source $DFL/zsh/.zsh_alias
 source $DFL/zsh/.zsh_functions
 source $DFL/zsh/.zsh_git
-source $DFL/zsh/.zsh_gcloud
-source $DFL/zsh/.zsh_aws
 
 # Load FZF
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
 # PATH configurations
 export PATH="/usr/local/sbin:$PATH"
-
-
-
-# cursor-agent
 export PATH="$HOME/.local/bin:$PATH"
 
 # pnpm configuration
@@ -63,14 +57,14 @@ case ":$PATH:" in
   *) export PATH="$PNPM_HOME:$PATH" ;;
 esac
 
-# direnv configuration
-eval "$(direnv hook zsh)"
+# direnv
+command -v direnv &>/dev/null && eval "$(direnv hook zsh)"
 
-# FNM configuration
-eval "$(fnm env --use-on-cd --shell zsh)"
-
-# Set default Node version
-fnm use lts/latest > /dev/null 2>&1
+# FNM (Fast Node Manager)
+if command -v fnm &>/dev/null; then
+    eval "$(fnm env --use-on-cd --shell zsh)"
+    fnm use lts/latest > /dev/null 2>&1
+fi
 
 # Enable Powerlevel10k instant prompt
 if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
@@ -80,18 +74,13 @@ fi
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
-# PSQL
-export PATH="/opt/homebrew/Cellar/postgresql@15/15.12_1/bin:$PATH"
+# Google Cloud SDK (conditional)
+[ -f "${HOME}/.google-cloud-sdk/path.zsh.inc" ] && source "${HOME}/.google-cloud-sdk/path.zsh.inc"
+[ -f "${HOME}/.google-cloud-sdk/completion.zsh.inc" ] && source "${HOME}/.google-cloud-sdk/completion.zsh.inc"
 
-# GO
-export GOROOT="/usr/local/go"
-export GOPATH="$HOME/Documents/go"
-export PATH="$GOPATH/bin:$GOROOT/bin:$PATH"
-
-# Google Cloud SDK
-source "${HOME}/.google-cloud-sdk/path.zsh.inc"
-source "${HOME}/.google-cloud-sdk/completion.zsh.inc"
-
-# JAVA HOME
-export JAVA_HOME="/opt/homebrew/opt/openjdk@21"
-export PATH="$JAVA_HOME/bin:$PATH"
+# Load machine-specific configuration (paths, org tools, etc.)
+# Create ~/.zshrc_local for machine-specific overrides:
+#   - PSQL, Go, Java paths
+#   - Org-specific aliases and functions
+#   - Machine-specific environment variables
+[ -f "$HOME/.zshrc_local" ] && source "$HOME/.zshrc_local"

@@ -1,4 +1,4 @@
-# 🚀 Grippado Dotfiles
+# Grippado Dotfiles
 
 <div align="center">
 
@@ -7,177 +7,166 @@
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
 ```
-  ▄▀  █▄▄▄▄ ▄█ █ ▄▄  █ ▄▄  ██   ██▄   ████▄            
-▄▀    █  ▄▀ ██ █   █ █   █ █ █  █  █  █   █            
-█ ▀▄  █▀▀▌  ██ █▀▀▀  █▀▀▀  █▄▄█ █   █ █   █            
-█   █ █  █  ▐█ █     █     █  █ █  █  ▀████            
- ███    █    ▐  █     █       █ ███▀                   
-       ▀         ▀     ▀     █                         
-                            ▀                          
-██▄   ████▄    ▄▄▄▄▀ ▄████  ▄█ █     ▄███▄     ▄▄▄▄▄   
-█  █  █   █ ▀▀▀ █    █▀   ▀ ██ █     █▀   ▀   █     ▀▄ 
-█   █ █   █     █    █▀▀    ██ █     ██▄▄   ▄  ▀▀▀▀▄   
-█  █  ▀████    █     █      ▐█ ███▄  █▄   ▄▀ ▀▄▄▄▄▀    
-███▀          ▀       █      ▐     ▀ ▀███▀             
-                       ▀                               
+  ▄▀  █▄▄▄▄ ▄█ █ ▄▄  █ ▄▄  ██   ██▄   ████▄
+▄▀    █  ▄▀ ██ █   █ █   █ █ █  █  █  █   █
+█ ▀▄  █▀▀▌  ██ █▀▀▀  █▀▀▀  █▄▄█ █   █ █   █
+█   █ █  █  ▐█ █     █     █  █ █  █  ▀████
+ ███    █    ▐  █     █       █ ███▀
+       ▀         ▀     ▀     █
+                            ▀
+██▄   ████▄    ▄▄▄▄▀ ▄████  ▄█ █     ▄███▄     ▄▄▄▄▄
+█  █  █   █ ▀▀▀ █    █▀   ▀ ██ █     █▀   ▀   █     ▀▄
+█   █ █   █     █    █▀▀    ██ █     ██▄▄   ▄  ▀▀▀▀▄
+█  █  ▀████    █     █      ▐█ ███▄  █▄   ▄▀ ▀▄▄▄▄▀
+███▀          ▀       █      ▐     ▀ ▀███▀
+                       ▀
 ```
 
 </div>
 
-## 🌟 Features
+## Features
 
-- 🚀 **Shell Environment**
-  - ZSH with Oh-My-ZSH
-  - Custom aliases and functions
-  - FZF for fuzzy finding
-  - FNM for Node.js version management
-  - Bashtop for system monitoring
+- **Shell Environment** — ZSH + Oh-My-ZSH + Powerlevel10k, 150+ aliases, custom functions, FZF, FNM
+- **Development Tools** — Neovim (LazyVim), Git with Conventional Commits, Docker/K8s tooling
+- **Claude Code** — Agnostic agents, commands, and base config shared across machines
+- **Modular Design** — Machine-specific paths, org aliases, and functions via local override files
+- **Security** — Secrets management via `~/.secrets` (never committed)
 
-- 🛠️ **Development Tools**
-  - Neovim configuration
-  - Git configuration
-  - Package management (Homebrew/APT)
-
-- 🔒 **Security**
-  - Secure secrets management
-  - GitHub token integration
-
-## 🚀 Quick Start
+## Quick Start
 
 ```bash
-# Clone the repository
 git clone git@github.com:grippado/dotfiles.git ~/.dotfiles
-
-# Navigate to dotfiles directory
 cd ~/.dotfiles
-
-# Make install script executable
 chmod +x install.sh
-
-# Run the installer
 ./install.sh
 ```
 
-## 📦 Requirements
+## What Gets Installed
 
-- macOS 13.0+ or Linux with APT
-- Git
-- Homebrew (macOS) or APT (Linux)
-- Internet connection
+| Component | Description |
+|-----------|-------------|
+| **Package Manager** | Homebrew (macOS) or APT (Linux) |
+| **Shell** | ZSH + Oh-My-Zsh + Powerlevel10k + plugins |
+| **Tools** | git, curl, wget, neovim, fzf, fnm, btop |
+| **Apps** (macOS) | Chrome, Brave, VS Code, iTerm2, Spotify, Rectangle |
+| **Claude Code** | Base agents, commands, and settings (symlinked) |
 
-## 🛠️ Installation Process
-
-The installer will:
-1. Set up your shell environment
-2. Install required packages
-3. Configure development tools
-4. Set up security features
-5. Create necessary symbolic links
-
-## 🔧 Manual Configuration
-
-If you prefer to configure manually:
-
-1. Create a `~/.secrets` file:
-```bash
-touch ~/.secrets
-```
-
-2. Add your secrets:
-```bash
-GITHUB_TOKEN=your_github_token_here
-```
-
-## 📚 Directory Structure
+## Directory Structure
 
 ```
 .dotfiles/
-├── configs/         # Configuration files
-├── installers/      # Installation scripts
-├── zsh/            # ZSH configuration
-├── install.sh      # Main installation script
-└── README.md       # This file
+├── install.sh              # Main installer
+├── configs/
+│   ├── git.sh              # Git global config
+│   └── secrets.sh          # Secret loader (~/.secrets)
+├── installers/
+│   ├── package-manager.sh  # Homebrew/APT setup
+│   ├── base.sh             # Core packages
+│   ├── omzsh.sh            # Oh-My-Zsh
+│   ├── fzf.sh              # Fuzzy finder
+│   ├── zsh-plugins.sh      # ZSH plugins & themes
+│   └── lazyvim.sh          # Neovim setup
+├── zsh/
+│   ├── .zshrc_base         # Main ZSH config
+│   ├── .zsh_alias          # Aliases
+│   ├── .zsh_functions      # Shell functions
+│   ├── .zsh_git            # Conventional Commits helper
+│   └── .zsh_gcloud         # Google Cloud SDK (legacy)
+└── claude/
+    ├── install.sh           # Claude config installer
+    ├── settings.json        # Base plugin config (agnostic)
+    ├── CLAUDE.md            # Global workspace instructions
+    ├── agents/              # Shared agents
+    │   ├── code-reviewer.md
+    │   ├── refactorer.md
+    │   ├── bug-hunter.md
+    │   └── test-writer.md
+    └── commands/            # Shared commands
+        ├── review-changes.md
+        ├── explain.md
+        ├── quick-commit.md
+        ├── dep-check.md
+        └── scaffold.md
+```
+
+## Local Overrides (Not Tracked)
+
+The installer creates these files on first run for machine-specific config:
+
+| File | Purpose |
+|------|---------|
+| `~/.zshrc_local` | Machine-specific paths (Go, Java, PSQL, etc.) |
+| `~/.zsh_aliases_local` | Org-specific aliases (project shortcuts, etc.) |
+| `~/.zsh_functions_local` | Org-specific functions |
+| `~/.secrets` | API tokens and credentials |
+
+These files are loaded automatically by the dotfiles but are **never committed** to the repo.
+
+## Claude Code
+
+The `claude/` directory contains agnostic Claude Code configs that work on any machine:
+
+**Agents:**
+- `code-reviewer` — Thorough code review with security/perf/readability checks
+- `refactorer` — Safe refactoring without behavior changes
+- `bug-hunter` — Systematic bug investigation
+- `test-writer` — Test generation matching project conventions
+
+**Commands (slash commands):**
+- `/review-changes` — Review all uncommitted changes
+- `/explain <target>` — Explain how code/systems work
+- `/quick-commit` — Conventional commit helper
+- `/dep-check` — Dependency audit
+- `/scaffold <what>` — Generate boilerplate from project patterns
+
+The Claude installer symlinks these to `~/.claude/` without overwriting existing local configs. To add org-specific agents or settings, use project-level `.claude/` directories or edit `~/.claude/settings.json` directly.
+
+## Manual Setup
+
+After installation, edit your local override files:
+
+```bash
+# Add machine-specific paths
+vim ~/.zshrc_local
+
+# Add org-specific aliases
+vim ~/.zsh_aliases_local
+
+# Add secrets
+vim ~/.secrets
 ```
 
 ---
 
-# 🇧🇷 Português
+# Portugues
 
-## 🌟 Recursos
-
-- 🚀 **Ambiente Shell**
-  - ZSH com Oh-My-ZSH
-  - Aliases e funções personalizadas
-  - FZF para busca fuzzy
-  - FNM para gerenciamento de versões do Node.js
-  - Bashtop para monitoramento do sistema
-
-- 🛠️ **Ferramentas de Desenvolvimento**
-  - Configuração do Neovim
-  - Configuração do Git
-  - Gerenciamento de pacotes (Homebrew/APT)
-
-- 🔒 **Segurança**
-  - Gerenciamento seguro de segredos
-  - Integração com token do GitHub
-
-## 🚀 Início Rápido
+## Inicio Rapido
 
 ```bash
-# Clone o repositório
 git clone git@github.com:grippado/dotfiles.git ~/.dotfiles
-
-# Navegue até o diretório dotfiles
 cd ~/.dotfiles
-
-# Torne o script de instalação executável
 chmod +x install.sh
-
-# Execute o instalador
 ./install.sh
 ```
 
-## 📦 Requisitos
+## Arquivos Locais (Nao Rastreados)
 
-- macOS 13.0+ ou Linux com APT
-- Git
-- Homebrew (macOS) ou APT (Linux)
-- Conexão com a internet
+O instalador cria estes arquivos para configuracao especifica da maquina:
 
-## 🛠️ Processo de Instalação
+- `~/.zshrc_local` — Paths especificos (Go, Java, PSQL)
+- `~/.zsh_aliases_local` — Aliases da organizacao
+- `~/.zsh_functions_local` — Funcoes da organizacao
+- `~/.secrets` — Tokens e credenciais
 
-O instalador irá:
-1. Configurar seu ambiente shell
-2. Instalar pacotes necessários
-3. Configurar ferramentas de desenvolvimento
-4. Configurar recursos de segurança
-5. Criar links simbólicos necessários
+## Claude Code
 
-## 🔧 Configuração Manual
+O diretorio `claude/` contem configuracoes agnosticas do Claude Code:
 
-Se preferir configurar manualmente:
+- **Agents**: code-reviewer, refactorer, bug-hunter, test-writer
+- **Comandos**: /review-changes, /explain, /quick-commit, /dep-check, /scaffold
 
-1. Crie um arquivo `~/.secrets`:
-```bash
-touch ~/.secrets
-```
+O instalador cria symlinks em `~/.claude/` sem sobrescrever configs locais existentes.
 
-2. Adicione seus segredos:
-```bash
-GITHUB_TOKEN=seu_token_github_aqui
-```
+## Licenca
 
-## 📚 Estrutura de Diretórios
-
-```
-.dotfiles/
-├── configs/         # Arquivos de configuração
-├── installers/      # Scripts de instalação
-├── zsh/            # Configuração do ZSH
-├── install.sh      # Script principal de instalação
-└── README.md       # Este arquivo
-```
-
-## 📄 Licença
-
-Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICENSE) para detalhes.
+MIT - Copyright 2023 Gabriel Gripp
