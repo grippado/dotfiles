@@ -177,10 +177,14 @@ alias back3="cd ../../.."
 alias back4="cd ../../../.."
 alias back5="cd ../../../../.."
 
-#claude
-alias calude="claude"
-alias claudinho="claude"
-alias cl="claude"
+#claude (brain-sync pulls latest notes before opening)
+alias cl="brain-sync && claude"
+alias calude="brain-sync && claude"
+alias claudio="brain-sync && claude"
+alias claudinho="brain-sync && claude"
+alias superclaude="brain-sync && claude --dangerously-skip-permissions"
+alias superclaudio="brain-sync && claude --dangerously-skip-permissions"
+alias claude-raw="command claude"
 
 # Load local/org-specific aliases if available
 [ -f "$HOME/.zsh_aliases_local" ] && source "$HOME/.zsh_aliases_local"

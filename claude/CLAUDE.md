@@ -1,22 +1,14 @@
-# Grippado Global Workspace
+# Dotfiles Workspace
 
-This is the global Claude Code configuration shared across all machines via dotfiles.
+Global preferences (language, commits, pnpm, subagent orchestration) live in `~/.claude/CLAUDE.md`.
+This file covers dotfiles-specific context only.
 
-## Preferences
+## Environment
 
-- Language: Brazilian Portuguese for communication when context is clear, English for code and technical terms
-- Commit style: Conventional Commits with emoji prefixes (see zsh/.zsh_git for the full commit function)
 - Shell: ZSH with Oh-My-Zsh and Powerlevel10k
 - Editor: Neovim (LazyVim)
 - Node management: FNM
-- Package managers: pnpm (preferred), yarn, npm
-
-## Workflow
-
-- Always use conventional commits
-- Prefer pnpm over yarn/npm for new projects
-- Use direnv for environment management
-- Use FZF-based tooling when available
+- See `zsh/.zsh_git` for the full conventional commit function with emoji prefixes
 
 ## Machine-Specific Overrides
 
