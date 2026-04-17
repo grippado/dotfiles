@@ -63,7 +63,7 @@ command -v direnv &>/dev/null && eval "$(direnv hook zsh)"
 # FNM (Fast Node Manager)
 if command -v fnm &>/dev/null; then
     eval "$(fnm env --use-on-cd --shell zsh)"
-    fnm use lts/latest > /dev/null 2>&1
+    fnm use default > /dev/null 2>&1
 fi
 
 # Enable Powerlevel10k instant prompt
