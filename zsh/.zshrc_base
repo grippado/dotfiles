@@ -58,7 +58,7 @@ case ":$PATH:" in
 esac
 
 # Notes vault
-export NOTES_VAULT="$HOME/www/personal/notes"
+export NOTES_VAULT="$HOME/.notes"
 
 # direnv
 command -v direnv &>/dev/null && eval "$(direnv hook zsh)"

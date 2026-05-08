@@ -488,7 +488,7 @@ function lsph() {
 
 # Brain sync - pull latest notes before opening claude
 function brain-sync() {
-    local notes_dir="$HOME/www/personal/notes"
+    local notes_dir="$HOME/.notes"
     if [[ -d "$notes_dir/.git" ]]; then
         git -C "$notes_dir" fetch origin 2>/dev/null
         local behind=$(git -C "$notes_dir" rev-list HEAD..origin/main --count 2>/dev/null)
@@ -507,7 +507,7 @@ function brain-sync() {
 
 # Brain push - commit and push notes
 function brain-push() {
-    local notes_dir="$HOME/www/personal/notes"
+    local notes_dir="$HOME/.notes"
     local msg="${1:-brain: update}"
     if [[ -d "$notes_dir/.git" ]]; then
         cd "$notes_dir"
@@ -531,7 +531,7 @@ function sync-brain {
     if [ -z "$commitMessage" ]; then
         commitMessage="brain: updates"
     fi
-    cd ~/www/personal/notes && git add -A && git commit -m "$commitMessage" && git push
+    cd ~/.notes && git add -A && git commit -m "$commitMessage" && git push
     echo "[brain] synced"
 }
 
