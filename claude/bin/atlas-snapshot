@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# atlas-snapshot — daily drift-detection snapshot.
+# Runs `claude-atlas check` against ~/.claude + ~/www and writes a dated report
+# to ~/.claude/atlas-history/. Compares severity counts to the previous snapshot
+# and writes a diff line to atlas-history/CHANGES.log.
+#
+# Install via cron (daily at 09:00):
+#   (crontab -l 2>/dev/null; echo "0 9 * * * $HOME/.claude/bin/atlas-snapshot") | crontab -
+
+set -euo pipefail
+
+HISTORY="$HOME/.claude/atlas-history"
+mkdir -p "$HISTORY"
+
+DATE=$(date +%Y-%m-%d)
+OUT="$HISTORY/${DATE}.txt"
+
+# Find the latest claude-atlas binary (uv tool install path or PATH)
+CLAUDE_ATLAS=$(command -v claude-atlas || true)
+if [ -z "$CLAUDE_ATLAS" ]; then
+  echo "atlas-snapshot: claude-atlas not found in PATH" >&2
+  exit 1
+fi
+
+# Capture full output.
+# Why --no-global + --auto-discover instead of explicit --paths ~/.claude:
+# atlas-sync creates symlinks under ~/.claude/commands/ pointing into repo .claude
+# dirs. claude-atlas (no symlink awareness) sees them as duplicate_exact pairs
+# and inflates the HIGH count by ~30. Skipping ~/.claude here loses override
+# detection (project X vs global X), but those overrides are already documented
+# in ARCHITECTURE.md §8 (SHARED-DEBT). See ADR-007.
+"$CLAUDE_ATLAS" check --no-global --auto-discover "$HOME/www" --top 0 > "$OUT" 2>&1 || true
+
+# Extract the summary line ("Found N issues (Xh, Ym, Zl) ...")
+SUMMARY=$(grep -E '^Found [0-9]+ issues' "$OUT" | tail -1 || echo "no summary")
+
+# Append to changelog
+PREV_LINE=$(tail -1 "$HISTORY/CHANGES.log" 2>/dev/null || echo "")
+NOW_LINE="$DATE — $SUMMARY"
+if [ "$NOW_LINE" != "$PREV_LINE" ]; then
+  echo "$NOW_LINE" >> "$HISTORY/CHANGES.log"
+fi
+
+# Keep only last 90 daily snapshots
+ls -1t "$HISTORY"/*.txt 2>/dev/null | tail -n +91 | xargs -r rm
+
+echo "atlas-snapshot: $OUT"
+echo "  $SUMMARY"

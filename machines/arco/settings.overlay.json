@@ -1,0 +1,31 @@
+{
+  "_doc": "Arco-machine overlay. Merged on top of claude/settings.base.json by scripts/merge-settings.sh. Overlay keys win — preserves Arco-specific plugins (figma, linear, slack, code-review, code-simplifier, atomic-agents, arco-ai-plugins) and 'auto' permission mode.",
+  "permissions": {
+    "defaultMode": "auto"
+  },
+  "model": "opus",
+  "enabledPlugins": {
+    "figma@claude-plugins-official": true,
+    "linear@claude-plugins-official": true,
+    "slack@claude-plugins-official": true,
+    "plugin-dev@claude-plugins-official": true,
+    "code-review@claude-plugins-official": true,
+    "code-simplifier@claude-plugins-official": true,
+    "atomic-agents@claude-plugins-official": true,
+    "core@arco-ai-plugins": true
+  },
+  "extraKnownMarketplaces": {
+    "claude-plugins-official": {
+      "source": {
+        "source": "github",
+        "repo": "anthropics/claude-plugins-official"
+      }
+    },
+    "arco-ai-plugins": {
+      "source": {
+        "source": "git",
+        "url": "git@github.com:OlaIsaac/arco-ai-plugins.git"
+      }
+    }
+  }
+}

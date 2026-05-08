@@ -1,0 +1,149 @@
+#!/usr/bin/env bash
+# atlas-sync — regenerates scope-namespaced commands and global aliases under
+# ~/.claude/commands/ from REGISTRY.json + per-command frontmatter.
+#
+# Idempotent: tracks managed symlinks in ~/.claude/.atlas-managed and removes
+# them before recreating, so re-running after editing the registry is safe.
+#
+# Behavior:
+#   - For each scope in REGISTRY.scopes (with claude_dir != null):
+#       symlink <repo>/<claude_dir>/commands/<verb>.md
+#         → ~/.claude/commands/<verb>:<scope>.md
+#   - If a command's frontmatter contains `alias_global: true`:
+#       symlink ~/.claude/commands/<verb>.md → ~/.claude/commands/<verb>:<scope>.md
+#   - Collisions (two scopes claim the same bare verb as alias) → fail loudly.
+#   - Pre-existing regular files at the alias path → fail (not overwritten).
+#
+# `shared` field on a scope is policy metadata, NOT behavior-changing for atlas-sync
+# (this script only creates symlinks under ~/.claude/, never modifies repo files).
+# Shared scopes are still indexed — read-only ≠ ignored. The flag matters for
+# Phase 1/2 operations that would *write* to the repo (extends: injection,
+# promotion, deduplication) — those must be skipped or PR-gated for shared scopes.
+# atlas-sync simply tags shared scopes in its output for visibility.
+#
+# Usage:
+#   atlas-sync           # apply
+#   atlas-sync --dry-run # show what would happen
+#   atlas-sync --check   # exit non-zero if state drifts from registry
+
+set -euo pipefail
+
+CLAUDE_DIR="$HOME/.claude"
+REGISTRY="$CLAUDE_DIR/REGISTRY.json"
+COMMANDS_DIR="$CLAUDE_DIR/commands"
+MANAGED_LIST="$CLAUDE_DIR/.atlas-managed"
+
+DRY_RUN=0
+CHECK_ONLY=0
+for arg in "$@"; do
+  case "$arg" in
+    --dry-run) DRY_RUN=1 ;;
+    --check) CHECK_ONLY=1; DRY_RUN=1 ;;
+    -h|--help)
+      sed -n '2,25p' "$0"; exit 0 ;;
+    *) echo "unknown arg: $arg" >&2; exit 64 ;;
+  esac
+done
+
+command -v jq >/dev/null || { echo "atlas-sync: jq required (brew install jq)" >&2; exit 1; }
+[ -f "$REGISTRY" ] || { echo "atlas-sync: $REGISTRY not found" >&2; exit 1; }
+mkdir -p "$COMMANDS_DIR"
+
+log() { echo "[atlas-sync] $*"; }
+do_or_say() {
+  if [ "$DRY_RUN" -eq 1 ]; then
+    echo "  would: $*"
+  else
+    eval "$*"
+  fi
+}
+
+# ── 1. Cleanup previously managed symlinks ────────────────────────────────────
+if [ -f "$MANAGED_LIST" ]; then
+  while IFS= read -r f; do
+    [ -z "$f" ] && continue
+    if [ -L "$f" ]; then
+      do_or_say "rm '$f'"
+    fi
+  done < "$MANAGED_LIST"
+fi
+NEW_MANAGED=$(mktemp)
+trap 'rm -f "$NEW_MANAGED"' EXIT
+
+# ── 2. Build verb:scope symlinks for each scope ───────────────────────────────
+# Track alias claims in a tempfile (verb<TAB>scope<TAB>source_path) for bash 3.2.
+ALIAS_CLAIMS=$(mktemp)
+trap 'rm -f "$NEW_MANAGED" "$ALIAS_CLAIMS"' EXIT
+
+while IFS=$'\t' read -r scope path claude_dir shared; do
+  [ "$claude_dir" = "null" ] && { log "skip scope '$scope' (claude_dir=null, shared=$shared)"; continue; }
+  expanded="${path/#\~/$HOME}"
+  cmd_dir="$expanded/$claude_dir/commands"
+  if [ ! -d "$cmd_dir" ]; then
+    log "skip scope '$scope': no directory at $cmd_dir"
+    continue
+  fi
+  tag=""
+  [ "$shared" = "true" ] && tag=" [shared, read-only]"
+  log "scope '$scope'$tag"
+
+  while IFS= read -r src; do
+    [ -f "$src" ] || continue
+    verb=$(basename "$src" .md)
+    case "$verb" in
+      README|CHANGELOG|NOTES|TODO|LICENSE) continue ;;
+    esac
+    target="$COMMANDS_DIR/${verb}:${scope}.md"
+    do_or_say "ln -sfn '$src' '$target'"
+    echo "$target" >> "$NEW_MANAGED"
+
+    # Detect alias_global in frontmatter (top YAML block)
+    if awk 'NR==1{if($0!="---")exit 1} /^---$/{c++; if(c==2)exit} c>=1 && /^alias_global:[[:space:]]*true[[:space:]]*$/{found=1} END{exit !found}' "$src"; then
+      prev=$(awk -F'\t' -v v="$verb" '$1==v{print; exit}' "$ALIAS_CLAIMS")
+      if [ -n "$prev" ]; then
+        echo "atlas-sync: ERROR — alias collision on '$verb'." >&2
+        echo "  claimed by: $prev" >&2
+        echo "  also by:    $scope	$src" >&2
+        echo "  Resolve: remove 'alias_global: true' from one of them, or rename one verb." >&2
+        exit 2
+      fi
+      printf '%s\t%s\t%s\n' "$verb" "$scope" "$src" >> "$ALIAS_CLAIMS"
+    fi
+  done < <(find "$cmd_dir" -maxdepth 1 -type f -name '*.md' | sort)
+done < <(jq -r '.scopes | to_entries[] | "\(.key)\t\(.value.path)\t\(.value.claude_dir // "null")\t\(.value.shared // false)"' "$REGISTRY")
+
+# ── 3. Create bare aliases ────────────────────────────────────────────────────
+while IFS=$'\t' read -r verb scope _src; do
+  [ -z "$verb" ] && continue
+  alias_file="$COMMANDS_DIR/${verb}.md"
+  scoped_file="$COMMANDS_DIR/${verb}:${scope}.md"
+
+  if [ -e "$alias_file" ] && [ ! -L "$alias_file" ]; then
+    echo "atlas-sync: ERROR — '$alias_file' exists as a regular file." >&2
+    echo "  '$verb' is requested as a global alias by scope '$scope', but a hand-written" >&2
+    echo "  global command already occupies that name. Resolve: delete or rename one." >&2
+    exit 3
+  fi
+
+  do_or_say "ln -sfn '$scoped_file' '$alias_file'"
+  echo "$alias_file" >> "$NEW_MANAGED"
+done < "$ALIAS_CLAIMS"
+
+# ── 4. Persist managed list ───────────────────────────────────────────────────
+if [ "$CHECK_ONLY" -eq 1 ]; then
+  # In check mode, compare new vs existing managed list
+  if [ -f "$MANAGED_LIST" ] && diff -q "$MANAGED_LIST" "$NEW_MANAGED" >/dev/null 2>&1; then
+    log "check: in sync"
+    exit 0
+  else
+    log "check: drift detected — run atlas-sync to reconcile"
+    exit 4
+  fi
+fi
+
+if [ "$DRY_RUN" -eq 0 ]; then
+  sort -u "$NEW_MANAGED" > "$MANAGED_LIST"
+  log "wrote $MANAGED_LIST ($(wc -l < "$MANAGED_LIST" | tr -d ' ') entries)"
+fi
+
+log "OK"

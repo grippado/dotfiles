@@ -1,0 +1,22 @@
+{
+  "_doc": "Personal-machine overlay. Merged on top of claude/settings.base.json by scripts/merge-settings.sh. Overlay keys win.",
+  "enabledPlugins": {
+    "vercel-plugin@vercel-vercel-plugin": false,
+    "vercel@claude-plugins-official": true,
+    "arco-default@olaisaac-arco-agents": true
+  },
+  "extraKnownMarketplaces": {
+    "vercel-vercel-plugin": {
+      "source": {
+        "source": "directory",
+        "path": "/Users/grippado/.cache/plugins/github.com-vercel-vercel-plugin"
+      }
+    },
+    "olaisaac-arco-agents": {
+      "source": {
+        "source": "directory",
+        "path": "/Users/grippado/www/isaac/arco-agents"
+      }
+    }
+  }
+}
