@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # Arco machine env vars for Claude Code workflows.
-# Source from ~/.zshrc_local (or equivalent):
+# Source from ~/.zshrc (or ~/.zshrc_local):
 #   export DOTFILES_AI_MACHINE=arco
-#   source "/Volumes/gabriel.gripp/www/personal/dotfiles-ai/machines/$DOTFILES_AI_MACHINE/env.sh"
+#   source "$HOME/www/personal/dotfiles-ai/machines/$DOTFILES_AI_MACHINE/env.sh"
 #
-# Note: $HOME on the Arco user is /Volumes/gabriel.gripp, so $HOME-based paths work too.
+# Uses $HOME so it works from both:
+#   - the Arco machine itself ($HOME=/Users/gabriel.gripp)
+#   - the personal machine via SMB mount of Arco's home ($HOME=/Volumes/gabriel.gripp)
 
-export NOTES_VAULT="/Volumes/gabriel.gripp/www/personal/notes"
+export NOTES_VAULT="$HOME/www/personal/notes"

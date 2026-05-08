@@ -1,60 +1,60 @@
 {
-  "_doc": "Arco machine — source of truth for Claude Atlas scope registry on the work machine. Edited by hand. Read by ~/.claude/bin/atlas-sync. See claude/ARCHITECTURE.md for full context. Note: paths use absolute /Volumes/gabriel.gripp/... because $HOME on this machine is /Volumes/gabriel.gripp.",
+  "_doc": "Arco machine — source of truth for Claude Atlas scope registry on the work machine. Edited by hand. Read by ~/.claude/bin/atlas-sync. See claude/ARCHITECTURE.md for full context. Paths use ~ (expanded to $HOME at runtime) so they work from both the Arco machine itself ($HOME=/Users/gabriel.gripp) and from the personal machine via SMB mount ($HOME=/Volumes/gabriel.gripp).",
   "version": 2,
   "scopes": {
     "notes": {
-      "path": "/Volumes/gabriel.gripp/www/personal/notes",
+      "path": "~/www/personal/notes",
       "claude_dir": ".claude",
       "shared": false,
       "_note": "Personal Obsidian vault — already cloned on Arco machine."
     },
     "gravity-design-system": {
-      "path": "/Volumes/gabriel.gripp/www/isaac/gravity-design-system",
+      "path": "~/www/isaac/gravity-design-system",
       "claude_dir": ".claude",
       "shared": true
     },
     "rf-monorepo": {
-      "path": "/Volumes/gabriel.gripp/www/isaac/rf-monorepo",
+      "path": "~/www/isaac/rf-monorepo",
       "claude_dir": ".claude",
       "shared": true
     },
     "backoffice": {
-      "path": "/Volumes/gabriel.gripp/www/isaac/backoffice",
+      "path": "~/www/isaac/backoffice",
       "claude_dir": ".claude",
       "shared": true
     },
     "backoffice-bff": {
-      "path": "/Volumes/gabriel.gripp/www/isaac/backoffice-bff",
+      "path": "~/www/isaac/backoffice-bff",
       "claude_dir": ".claude",
       "shared": true
     },
     "communication-api": {
-      "path": "/Volumes/gabriel.gripp/www/isaac/communication-api",
+      "path": "~/www/isaac/communication-api",
       "claude_dir": ".claude",
       "shared": true
     },
     "payment-api": {
-      "path": "/Volumes/gabriel.gripp/www/isaac/payment-api",
+      "path": "~/www/isaac/payment-api",
       "claude_dir": ".claude",
       "shared": true
     },
     "sorting-hat": {
-      "path": "/Volumes/gabriel.gripp/www/isaac/sorting-hat",
+      "path": "~/www/isaac/sorting-hat",
       "claude_dir": ".claude",
       "shared": true
     },
     "joy": {
-      "path": "/Volumes/gabriel.gripp/www/isaac/joy",
+      "path": "~/www/isaac/joy",
       "claude_dir": ".claude",
       "shared": true
     },
     "technical-refining": {
-      "path": "/Volumes/gabriel.gripp/www/isaac/technical-refining",
+      "path": "~/www/isaac/technical-refining",
       "claude_dir": ".claude",
       "shared": true
     },
     "isaac": {
-      "path": "/Volumes/gabriel.gripp/www/isaac",
+      "path": "~/www/isaac",
       "claude_dir": null,
       "shared": true,
       "_note": "Cluster of team repos. Read-only. Sub-repos have their own .claude/ but Atlas does NOT recurse here. See ARCHITECTURE.md §10 (SHARED-DEBT)."
