@@ -71,6 +71,7 @@ echo "[top-level docs & statusline]"
 link "$REPO/claude/CLAUDE.md"                  "$CLAUDE_DIR/CLAUDE.md"
 link "$REPO/claude/ARCHITECTURE.md"            "$CLAUDE_DIR/ARCHITECTURE.md"
 link "$REPO/claude/statusline-command-v2.sh"   "$CLAUDE_DIR/statusline-command-v2.sh"
+link "$REPO/claude/statusline-command-v3.sh"   "$CLAUDE_DIR/statusline-command-v3.sh"
 
 echo
 echo "[bin/]"
