@@ -112,6 +112,19 @@ else
 fi
 
 echo
+echo "[atlas-sync — scoped command symlinks from REGISTRY]"
+echo "  IMPORTANT: atlas-sync expands \$HOME at runtime, so it must run on the"
+echo "  *physical* machine you're configuring (not via a remote/SMB mount —"
+echo "  that bakes the wrong \$HOME into the symlinks)."
+if [ "$DRY" -eq 1 ]; then
+  echo "  [dry] would run $CLAUDE_DIR/bin/atlas-sync"
+elif [ -x "$CLAUDE_DIR/bin/atlas-sync" ]; then
+  "$CLAUDE_DIR/bin/atlas-sync"
+else
+  echo "  ! atlas-sync not found at $CLAUDE_DIR/bin/atlas-sync — skipping"
+fi
+
+echo
 echo "── done ──"
 echo "Next steps:"
 echo "  1. Add to ~/.zshrc_local (and source it from ~/.zshrc):"
@@ -119,4 +132,3 @@ echo "       export DOTFILES_AI_MACHINE=$MACHINE"
 echo "       source \"$REPO/machines/\$DOTFILES_AI_MACHINE/env.sh\""
 echo "  2. exec zsh"
 echo "  3. Run: $REPO/scripts/doctor.sh"
-echo "  4. Run: ~/.claude/bin/atlas-sync   (regenerates scoped command symlinks)"
