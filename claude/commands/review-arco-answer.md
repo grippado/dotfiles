@@ -1,6 +1,6 @@
 ---
 name: review-arco-answer
-description: Lê threads de comentários de uma PR Arco/OlaIsaac, redige rascunhos de réplicas em PT-BR e persiste o resultado como arquivo .md no Obsidian vault em ~/www/personal/notes/1-contexts/arco/pr-reviews/. Não posta nada no GitHub.
+description: Lê threads de comentários de uma PR Arco/OlaIsaac, redige rascunhos de réplicas em PT-BR e persiste o resultado como arquivo .md no Obsidian vault em ~/www/personal/notes/1-contexts/arco/pr-reviews/<repo>/. Não posta nada no GitHub.
 user_invocable: true
 ---
 
@@ -145,14 +145,16 @@ Convenção:
 - Se já existe `-v1-answers.md`, usar `-v2-answers.md`, e assim por diante
 - Independente do `--all` — flag não muda o sufixo
 
-Path completo: `/Users/grippado/www/personal/notes/1-contexts/arco/pr-reviews/{filename}`
+Path completo: `$NOTES_VAULT/1-contexts/arco/pr-reviews/{repo-slug}/{filename}`
+
+> **Estrutura por repo:** desde 2026-05-08, PR reviews (e seus answers) vivem em subpastas por repo (`pr-reviews/communication-api/`, etc.). Procure o review original na subpasta do repo correspondente.
 
 ### 9. Linkar review original (opcional)
 
-Procurar no diretório do vault:
+Procurar no diretório do vault (na subpasta do repo):
 
 ```bash
-ls /Users/grippado/www/personal/notes/1-contexts/arco/pr-reviews/ \
+ls "$NOTES_VAULT/1-contexts/arco/pr-reviews/{repo-slug}/" \
   | grep -E "^[0-9]{4}-[0-9]{2}-[0-9]{2}-{repo-slug}-PR{number}(-v[0-9]+)?\.md$" \
   | sort | tail -1
 ```

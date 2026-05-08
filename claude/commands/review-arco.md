@@ -1,6 +1,6 @@
 ---
 name: review-arco
-description: Revisa uma PR (ou branch atual vs main) no contexto Arco/OlaIsaac e persiste o review como arquivo .md no Obsidian vault em ~/www/personal/notes/1-contexts/arco/pr-reviews/
+description: Revisa uma PR (ou branch atual vs main) no contexto Arco/OlaIsaac e persiste o review como arquivo .md no Obsidian vault em ~/www/personal/notes/1-contexts/arco/pr-reviews/<repo>/
 user_invocable: true
 ---
 
@@ -105,7 +105,9 @@ Convenção:
   - Exemplo: `2026-04-30-backoffice-bff-cma-2400-feature-x.md`
   - branch-slug = nome da branch em kebab-case, sem prefixos como `feat/`, `fix/`
 
-Path completo: `/Users/grippado/www/personal/notes/1-contexts/arco/pr-reviews/{filename}`
+Path completo: `$NOTES_VAULT/1-contexts/arco/pr-reviews/{repo-slug}/{filename}`
+
+> **Estrutura por repo:** desde 2026-05-08, PR reviews vivem em subpastas por repositório (`pr-reviews/communication-api/`, `pr-reviews/rf-monorepo/`, etc.). Crie a subpasta se não existir. Reviews que não se encaixam em um repo único (DRTs, análises cross-cutting) ficam no root `pr-reviews/`.
 
 **Re-runs no mesmo dia:**
 
