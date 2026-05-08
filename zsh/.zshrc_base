@@ -57,6 +57,9 @@ case ":$PATH:" in
   *) export PATH="$PNPM_HOME:$PATH" ;;
 esac
 
+# Notes vault
+export NOTES_VAULT="$HOME/www/personal/notes"
+
 # direnv
 command -v direnv &>/dev/null && eval "$(direnv hook zsh)"
 

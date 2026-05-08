@@ -185,6 +185,8 @@ alias claudinho="brain-sync && claude"
 alias superclaude="brain-sync && claude --dangerously-skip-permissions"
 alias superclaudio="brain-sync && claude --dangerously-skip-permissions"
 alias claude-raw="command claude"
+alias scc="brain-sync && claude --dangerously-skip-permissions"
+alias cc="brain-sync && claude"
 
 # Load local/org-specific aliases if available
 [ -f "$HOME/.zsh_aliases_local" ] && source "$HOME/.zsh_aliases_local"

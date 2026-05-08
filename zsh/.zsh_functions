@@ -525,5 +525,15 @@ function brain-push() {
     fi
 }
 
+# Sync brain - add, commit, and push notes
+function sync-brain {
+    local commitMessage=$1
+    if [ -z "$commitMessage" ]; then
+        commitMessage="brain: updates"
+    fi
+    cd ~/www/personal/notes && git add -A && git commit -m "$commitMessage" && git push
+    echo "[brain] synced"
+}
+
 # Load local/org-specific functions if available
 [ -f "$HOME/.zsh_functions_local" ] && source "$HOME/.zsh_functions_local"
