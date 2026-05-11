@@ -238,8 +238,16 @@ if [ "$(printf '%.0f' "${ctx_total:-0}")" -gt 0 ] 2>/dev/null; then
   ctx_tokens=" ${GREY}(${RST}$(fmt_tokens "$ctx_used")${GREY}/${RST}$(fmt_tokens "$ctx_total")${GREY})${RST}"
 fi
 
-# Linha 2: CTX bar N% (used/total) | 5H bar | 7D bar
-printf '%sCTX%s %s %s%s%%%s%s | %s5H%s %s %s %s%s%%%s | %s7D%s %s %s %s%s%%%s\n' \
-  "$GREY" "$RST" "$(bar "$ctx_int")" "$ctx_c" "$ctx_int" "$RST" "$ctx_tokens" \
-  "$GREY" "$RST" "$rl5_when"   "$(bar "$rl5_int")" "$rl5_c" "$rl5_int" "$RST" \
-  "$GREY" "$RST" "$rl7_when"   "$(bar "$rl7_int")" "$rl7_c" "$rl7_int" "$RST"
+# Plano da conta: enterprise não tem janelas 5h/7d, então escondemos.
+plan=$(printf '%s' "${DOTFILES_AI_PLAN:-pro}" | tr '[:upper:]' '[:lower:]')
+
+# Linha 2: CTX bar N% (used/total) [| 5H bar | 7D bar — só fora do enterprise]
+if [ "$plan" = "enterprise" ]; then
+  printf '%sCTX%s %s %s%s%%%s%s\n' \
+    "$GREY" "$RST" "$(bar "$ctx_int")" "$ctx_c" "$ctx_int" "$RST" "$ctx_tokens"
+else
+  printf '%sCTX%s %s %s%s%%%s%s | %s5H%s %s %s %s%s%%%s | %s7D%s %s %s %s%s%%%s\n' \
+    "$GREY" "$RST" "$(bar "$ctx_int")" "$ctx_c" "$ctx_int" "$RST" "$ctx_tokens" \
+    "$GREY" "$RST" "$rl5_when"   "$(bar "$rl5_int")" "$rl5_c" "$rl5_int" "$RST" \
+    "$GREY" "$RST" "$rl7_when"   "$(bar "$rl7_int")" "$rl7_c" "$rl7_int" "$RST"
+fi

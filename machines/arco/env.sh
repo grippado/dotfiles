@@ -9,3 +9,8 @@
 #   - the personal machine via SMB mount of Arco's home ($HOME=/Volumes/gabriel.gripp)
 
 export NOTES_VAULT="$HOME/.notes"
+
+# Plano da conta Claude nesta máquina.
+# enterprise → conta corporativa sem janelas 5h/7d (statusline esconde esses campos).
+# pro        → conta com janelas 5h/7d (default; statusline mostra ambas).
+export DOTFILES_AI_PLAN=enterprise

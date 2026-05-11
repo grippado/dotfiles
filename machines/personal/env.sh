@@ -6,5 +6,10 @@
 
 export NOTES_VAULT="$HOME/.notes"
 
+# Plano da conta Claude nesta máquina.
+# enterprise → conta corporativa sem janelas 5h/7d.
+# pro        → conta com janelas 5h/7d (default).
+export DOTFILES_AI_PLAN=pro
+
 # Optional: notification daemon (Superset). Leave unset if not used.
 # export SUPERSET_HOME_DIR="$HOME/www/personal/superset"
