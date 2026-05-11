@@ -1,6 +1,6 @@
 ---
 name: review-arco
-description: Revisa uma PR (ou branch atual vs main) no contexto Arco/OlaIsaac e persiste o review como arquivo .md no Obsidian vault em ~/www/personal/notes/1-contexts/arco/pr-reviews/<repo>/
+description: Revisa uma PR (ou branch atual vs main) no contexto Arco/OlaIsaac e persiste o review como arquivo .md no Obsidian vault em ~/.notes/1-contexts/arco/pr-reviews/<repo>/
 user_invocable: true
 ---
 

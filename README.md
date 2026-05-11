@@ -9,7 +9,7 @@ Source of truth for my Claude Code configuration across machines (pessoal + Arco
 ### Personal (macOS, `~` = `/Users/grippado`)
 
 ```bash
-cd ~/www/personal/dotfiles-ai
+cd ~/.dotfiles-ai
 ./install.sh --machine personal --dry-run   # inspect
 ./install.sh --machine personal             # apply
 ```
@@ -18,7 +18,7 @@ Add to `~/.zshrc_local` (and `source ~/.zshrc_local` from `~/.zshrc`):
 
 ```bash
 export DOTFILES_AI_MACHINE=personal
-source "$HOME/www/personal/dotfiles-ai/machines/$DOTFILES_AI_MACHINE/env.sh"
+source "$HOME/.dotfiles-ai/machines/$DOTFILES_AI_MACHINE/env.sh"
 ```
 
 Then: `exec zsh && ./scripts/doctor.sh`.
@@ -36,7 +36,7 @@ cd dotfiles-ai
 `~/.zshrc_local`:
 ```bash
 export DOTFILES_AI_MACHINE=arco
-source "$HOME/www/personal/dotfiles-ai/machines/$DOTFILES_AI_MACHINE/env.sh"
+source "$HOME/.dotfiles-ai/machines/$DOTFILES_AI_MACHINE/env.sh"
 ```
 
 Plus clone the memory-sync repo:
@@ -102,5 +102,5 @@ These live in `~/.claude/` directly and never get committed:
 
 ## Related repos
 
-- `git@github.com:grippado/ai-memory-sync.git` — memory hooks (Stop/SessionStart) referenced by `settings.base.json`. Clone to `$HOME/www/personal/ai-memory-sync` on every machine.
+- `git@github.com:grippado/ai-memory-sync.git` — memory hooks (Stop/SessionStart) referenced by `settings.base.json`. Clone to `$HOME/.ai-memory-sync` on every machine.
 - `git@github.com:grippado/notes.git` — Obsidian vault. `$NOTES_VAULT` points here. `/organize`, `/review-arco`, `/review-arco-answer` write to it.

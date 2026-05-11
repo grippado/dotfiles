@@ -8,7 +8,7 @@
       "shared": false
     },
     "notes": {
-      "path": "~/www/personal/notes",
+      "path": "~/.notes",
       "claude_dir": ".claude",
       "shared": false
     },

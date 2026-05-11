@@ -48,7 +48,7 @@ SETTINGS="$HOME/.claude/settings.json"
 
 echo
 echo "[ai-memory-sync]"
-AMS="$HOME/www/personal/ai-memory-sync"
+AMS="$HOME/.ai-memory-sync"
 [ -d "$AMS" ] && ok "$AMS exists" || warn "$AMS missing (clone git@github.com:grippado/ai-memory-sync.git)"
 [ -x "$AMS/hooks/claude-stop.sh" ] && ok "claude-stop.sh executable" || warn "claude-stop.sh missing or not executable"
 [ -x "$AMS/hooks/claude-session-start.sh" ] && ok "claude-session-start.sh executable" || warn "claude-session-start.sh missing or not executable"

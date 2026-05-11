@@ -3,7 +3,7 @@
   "version": 2,
   "scopes": {
     "notes": {
-      "path": "~/www/personal/notes",
+      "path": "~/.notes",
       "claude_dir": ".claude",
       "shared": false,
       "_note": "Personal Obsidian vault — already cloned on Arco machine."

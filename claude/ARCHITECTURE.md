@@ -107,7 +107,7 @@ Exceção: `labor-city` (hífen) em vez de `labor.city` (ponto), porque `.` em f
 │   ├── ship.md                # global genérico (hand-written)
 │   ├── qa.md                  # global genérico (hand-written)
 │   ├── sync:flagbridge.md     # symlink → ~/www/personal/flagbridge/.claude/commands/sync.md
-│   ├── organize:notes.md      # symlink → ~/www/personal/notes/.claude/commands/organize.md
+│   ├── organize:notes.md      # symlink → ~/.notes/.claude/commands/organize.md
 │   ├── organize.md            # symlink → organize:notes.md  (alias_global: true)
 │   └── ...
 │
@@ -168,7 +168,7 @@ Modos:
 | Slug | Path | Shared | Status |
 |---|---|---|---|
 | `flagbridge` | `~/www/personal/flagbridge` | não | ativo |
-| `notes` | `~/www/personal/notes` | não | ativo |
+| `notes` | `~/.notes` | não | ativo |
 | `labor-city` | `~/www/personal/labor.city` | não | ativo (slug ≠ dirname) |
 | `declare-ui` | `~/www/personal/declare-ui` | não | ativo |
 | `gravity-design-system` | `~/www/isaac/gravity-design-system` | **sim** | ativo, read-only |
@@ -309,7 +309,7 @@ Para cada symlink encontrado, decidir explicitamente:
 
 ### ADR-009 — Portabilidade multi-máquina via env vars com guard explícito
 
-**Contexto.** Atlas usado em 2+ máquinas: MBP pessoal (`/Users/grippado`) + Mac Arco (`/Users/gabriel.gripp`, com layouts de diretório diferentes — vault em `personal/notes` aqui, em `PROJECTS/central-brain` lá). Levantamento na Fase 3 (após validação do `/organize`) achou **4 arquivos / 7 ocorrências em 3 padrões distintos**:
+**Contexto.** Atlas usado em 2+ máquinas: MBP pessoal (`/Users/grippado`) + Mac Arco (`/Users/gabriel.gripp`, com layouts de diretório diferentes — vault em `.notes` aqui, em `PROJECTS/central-brain` lá). Levantamento na Fase 3 (após validação do `/organize`) achou **4 arquivos / 7 ocorrências em 3 padrões distintos**:
 
 - (a) Vault externo (notes, 2 refs): genuinamente multi-localizado.
 - (b) Memory path derivado do cwd (flagbridge, 1 ref): convenção do próprio Claude Code (`~/.claude/projects/<slug>/`, slug = path absoluto com `/` → `-`); varia por máquina por construção.
@@ -406,7 +406,7 @@ dotfiles-ai/
 
 **Repos relacionados.**
 - `git@github.com:grippado/dotfiles-ai.git` — esta arquitetura
-- `git@github.com:grippado/ai-memory-sync.git` — hooks `Stop`/`SessionStart` referenciados pelo `settings.base.json`. Clone obrigatório em cada máquina (em `$HOME/www/personal/ai-memory-sync`).
+- `git@github.com:grippado/ai-memory-sync.git` — hooks `Stop`/`SessionStart` referenciados pelo `settings.base.json`. Clone obrigatório em cada máquina (em `$HOME/.ai-memory-sync`).
 - `git@github.com:grippado/notes.git` — vault Obsidian (`$NOTES_VAULT`).
 
 ---
@@ -522,7 +522,7 @@ Sequência reproduzível pra trazer Atlas pra uma máquina nova (ou recriar do z
 Clonar nos paths que o `REGISTRY.json` espera, ou ajustar o REGISTRY pros paths reais da nova máquina (preferível — REGISTRY existe pra isso).
 
 ```bash
-git clone git@github.com:grippado/notes.git       ~/www/personal/notes
+git clone git@github.com:grippado/notes.git       ~/.notes
 git clone git@github.com:grippado/flagbridge.git  ~/www/personal/flagbridge
 git clone git@github.com:grippado/labor.city.git  ~/www/personal/labor.city
 git clone git@github.com:grippado/declare-ui.git  ~/www/personal/declare-ui
@@ -530,14 +530,14 @@ git clone git@github.com:grippado/declare-ui.git  ~/www/personal/declare-ui
 git clone git@github.com:isaac/gravity-design-system.git ~/www/isaac/gravity-design-system
 ```
 
-Se o layout for diferente (ex: Mac Arco usa `~/www/PROJECTS/central-brain` em vez de `~/www/personal/notes`): editar `~/.claude/REGISTRY.json` pra refletir, em vez de recriar a estrutura igual.
+Se o layout for diferente (ex: Mac Arco usa `~/www/PROJECTS/central-brain` em vez de `~/.notes`): editar `~/.claude/REGISTRY.json` pra refletir, em vez de recriar a estrutura igual.
 
 ### 3. Variáveis de ambiente
 
 No `~/.zshrc` (ou `~/.zshrc_local` machine-specific):
 
 ```bash
-export NOTES_VAULT="$HOME/www/personal/notes"        # MBP
+export NOTES_VAULT="$HOME/.notes"        # MBP
 # export NOTES_VAULT="$HOME/www/PROJECTS/central-brain"  # Mac Arco
 ```
 

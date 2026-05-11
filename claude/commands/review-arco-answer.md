@@ -1,6 +1,6 @@
 ---
 name: review-arco-answer
-description: Lê threads de comentários de uma PR Arco/OlaIsaac, redige rascunhos de réplicas em PT-BR e persiste o resultado como arquivo .md no Obsidian vault em ~/www/personal/notes/1-contexts/arco/pr-reviews/<repo>/. Não posta nada no GitHub.
+description: Lê threads de comentários de uma PR Arco/OlaIsaac, redige rascunhos de réplicas em PT-BR e persiste o resultado como arquivo .md no Obsidian vault em ~/.notes/1-contexts/arco/pr-reviews/<repo>/. Não posta nada no GitHub.
 user_invocable: true
 ---
 
