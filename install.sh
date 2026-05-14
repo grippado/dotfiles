@@ -75,7 +75,7 @@ link "$REPO/claude/statusline-command-v3.sh"   "$CLAUDE_DIR/statusline-command-v
 
 echo
 echo "[bin/]"
-for f in atlas-sync atlas-snapshot; do
+for f in atlas-sync atlas-snapshot ccstatusline; do
   link "$REPO/claude/bin/$f" "$CLAUDE_DIR/bin/$f"
 done
 
