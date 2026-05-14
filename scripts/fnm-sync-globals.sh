@@ -97,8 +97,45 @@ read_registry() {
 }
 
 is_installed_in() {
+  # Checks both:
+  #   - lib/node_modules/<pkg>     (npm install -g)
+  #   - bin/<pkg>                  (corepack-managed shims for pnpm/yarn on Node 22+)
+  # Note: scoped packages (@scope/pkg) only checked via lib/node_modules; their
+  # binary names typically differ (e.g., @anthropic-ai/claude-code → 'claude').
   local ver="$1" pkg="$2"
-  [ -d "$NODE_VERS_DIR/$ver/installation/lib/node_modules/$pkg" ]
+  local install="$NODE_VERS_DIR/$ver/installation"
+  [ -d "$install/lib/node_modules/$pkg" ] && return 0
+  [ -e "$install/bin/$pkg" ] && return 0
+  return 1
+}
+
+# install_pkg_in_version <version> <package> [verbose-flag]
+# Uses corepack for pnpm/yarn on Node 22+ (where npm install -g is blocked).
+# Falls back to npm install -g for everything else.
+install_pkg_in_version() {
+  local ver="$1" pkg="$2" verbose="${3:-0}"
+  local major
+  major=$(echo "$ver" | sed 's/^v//' | cut -d. -f1)
+
+  # Corepack path: pnpm/yarn on Node 16.10+ (corepack ships with Node).
+  # We use it specifically for Node 22+ where 'npm install -g pnpm/yarn' is blocked.
+  if [ "$major" -ge 22 ] && { [ "$pkg" = "pnpm" ] || [ "$pkg" = "yarn" ]; }; then
+    if [ "$verbose" -eq 1 ]; then
+      fnm exec --using="$ver" corepack enable && \
+        fnm exec --using="$ver" corepack prepare "${pkg}@latest" --activate
+    else
+      fnm exec --using="$ver" corepack enable >/dev/null 2>&1 && \
+        fnm exec --using="$ver" corepack prepare "${pkg}@latest" --activate >/dev/null 2>&1
+    fi
+    return $?
+  fi
+
+  # Default path: npm install -g
+  if [ "$verbose" -eq 1 ]; then
+    fnm exec --using="$ver" npm install -g "$pkg"
+  else
+    fnm exec --using="$ver" npm install -g "$pkg" >/dev/null 2>&1
+  fi
 }
 
 ensure_registry_file() {
@@ -205,14 +242,10 @@ cmd_sync() {
     local n_missing; n_missing=$(wc -l < "$TMP/missing" | tr -d ' ')
     info "→ $v: installing $n_missing missing"
     while IFS= read -r p; do
-      if [ "$VERBOSE" -eq 1 ]; then
-        fnm exec --using="$v" npm install -g "$p"
+      if install_pkg_in_version "$v" "$p" "$VERBOSE"; then
+        [ "$VERBOSE" -eq 1 ] || info "  ✓ $p"
       else
-        if fnm exec --using="$v" npm install -g "$p" >/dev/null 2>&1; then
-          info "  ✓ $p"
-        else
-          info "  ✗ $p (install failed)"
-        fi
+        info "  ✗ $p (install failed)"
       fi
       total=$((total+1))
     done < "$TMP/missing"
