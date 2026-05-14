@@ -4,6 +4,7 @@
 
 - Language: Brazilian Portuguese for communication when context is clear, English for code and technical terms
 - PT-BR writing: SEMPRE usar acentuação e diacríticos corretos em português (é, ã, ç, ê, ó, etc.). Nunca omitir acentos — "aplicação" e não "aplicacao", "código" e não "codigo", "não" e não "nao". Isso vale para código (strings i18n, conteúdo em pt.json), comentários, e comunicação com o usuário.
+- **NO em-dashes em textos para publicação externa.** Qualquer texto que eu preparar para o usuário postar/enviar (LinkedIn posts, Slack messages, PR titles, PR bodies, commit messages externos, comentários em issues públicas) NÃO deve conter travessão (—) nem en-dash (–). Usar vírgula, dois-pontos, parênteses, ponto-e-vírgula ou quebra de frase. Esta regra NÃO se aplica à comunicação interna comigo no chat, nem a comentários inline de código, nem a docs internas (CLAUDE.md, ADRs, notes pessoais).
 - Commit style: Conventional Commits with emoji prefixes
 - Package managers: pnpm (preferred), yarn, npm
 - Use direnv for environment management
