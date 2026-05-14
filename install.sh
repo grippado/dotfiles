@@ -113,6 +113,23 @@ else
 fi
 
 echo
+echo "[contexts/ — workspace-level .claude symlinks]"
+for ctx_dir in "$REPO/contexts"/*/; do
+  [ -d "$ctx_dir" ] || continue
+  ctx_name=$(basename "$ctx_dir")
+  case "$ctx_name" in
+    personal) workspace="$HOME/www/personal" ;;
+    arco)     workspace="$HOME/www/isaac" ;;
+    *)        echo "  ! unknown context: $ctx_name — skipping"; continue ;;
+  esac
+  if [ ! -d "$workspace" ]; then
+    echo "  ! workspace missing: $workspace — skipping context $ctx_name"
+    continue
+  fi
+  link "$ctx_dir.claude" "$workspace/.claude"
+done
+
+echo
 echo "[atlas-sync — scoped command symlinks from REGISTRY]"
 echo "  IMPORTANT: atlas-sync expands \$HOME at runtime, so it must run on the"
 echo "  *physical* machine you're configuring (not via a remote/SMB mount —"
