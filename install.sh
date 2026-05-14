@@ -143,6 +143,16 @@ else
 fi
 
 echo
+echo "[fnm-sync-globals — keep npm globals consistent across node versions]"
+if [ "$DRY" -eq 1 ]; then
+  echo "  [dry] would run scripts/fnm-sync-globals.sh sync --quiet"
+elif command -v fnm >/dev/null 2>&1; then
+  "$REPO/scripts/fnm-sync-globals.sh" sync --quiet || echo "  ! sync had failures (run 'scripts/fnm-sync-globals.sh sync' for details)"
+else
+  echo "  ! fnm not in PATH — skipping"
+fi
+
+echo
 echo "── done ──"
 echo "Next steps:"
 echo "  1. Add to ~/.zshrc_local (and source it from ~/.zshrc):"
