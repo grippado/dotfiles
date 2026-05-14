@@ -1,0 +1,6 @@
+{
+  "_doc": "Personal workspace overlay. Activated when cwd is under /Users/grippado/www/personal/*. Plugins/permissions here are SCOPED to this workspace only.",
+  "enabledPlugins": {
+    "vercel@claude-plugins-official": true
+  }
+}

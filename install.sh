@@ -75,7 +75,7 @@ link "$REPO/claude/statusline-command-v3.sh"   "$CLAUDE_DIR/statusline-command-v
 
 echo
 echo "[bin/]"
-for f in atlas-sync atlas-snapshot; do
+for f in atlas-sync atlas-snapshot ccstatusline; do
   link "$REPO/claude/bin/$f" "$CLAUDE_DIR/bin/$f"
 done
 
@@ -113,6 +113,23 @@ else
 fi
 
 echo
+echo "[contexts/ — workspace-level .claude symlinks]"
+for ctx_dir in "$REPO/contexts"/*/; do
+  [ -d "$ctx_dir" ] || continue
+  ctx_name=$(basename "$ctx_dir")
+  case "$ctx_name" in
+    personal) workspace="$HOME/www/personal" ;;
+    arco)     workspace="$HOME/www/isaac" ;;
+    *)        echo "  ! unknown context: $ctx_name — skipping"; continue ;;
+  esac
+  if [ ! -d "$workspace" ]; then
+    echo "  ! workspace missing: $workspace — skipping context $ctx_name"
+    continue
+  fi
+  link "$ctx_dir.claude" "$workspace/.claude"
+done
+
+echo
 echo "[atlas-sync — scoped command symlinks from REGISTRY]"
 echo "  IMPORTANT: atlas-sync expands \$HOME at runtime, so it must run on the"
 echo "  *physical* machine you're configuring (not via a remote/SMB mount —"
@@ -123,6 +140,16 @@ elif [ -x "$CLAUDE_DIR/bin/atlas-sync" ]; then
   "$CLAUDE_DIR/bin/atlas-sync"
 else
   echo "  ! atlas-sync not found at $CLAUDE_DIR/bin/atlas-sync — skipping"
+fi
+
+echo
+echo "[fnm-sync-globals — keep npm globals consistent across node versions]"
+if [ "$DRY" -eq 1 ]; then
+  echo "  [dry] would run scripts/fnm-sync-globals.sh sync --quiet"
+elif command -v fnm >/dev/null 2>&1; then
+  "$REPO/scripts/fnm-sync-globals.sh" sync --quiet || echo "  ! sync had failures (run 'scripts/fnm-sync-globals.sh sync' for details)"
+else
+  echo "  ! fnm not in PATH — skipping"
 fi
 
 echo

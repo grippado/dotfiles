@@ -29,7 +29,7 @@ done
 
 echo
 echo "[claude symlinks]"
-for f in CLAUDE.md ARCHITECTURE.md statusline-command-v2.sh REGISTRY.json bin/atlas-sync bin/atlas-snapshot; do
+for f in CLAUDE.md ARCHITECTURE.md statusline-command-v2.sh REGISTRY.json bin/atlas-sync bin/atlas-snapshot bin/ccstatusline; do
   target="$HOME/.claude/$f"
   if [ -L "$target" ]; then
     real=$(readlink "$target")
@@ -63,6 +63,19 @@ if [ -f "$REG" ] && command -v jq >/dev/null; then
   done
 else
   fail "cannot read $REG"
+fi
+
+echo
+echo "[fnm globals]"
+if command -v fnm >/dev/null 2>&1; then
+  if "$REPO/scripts/fnm-sync-globals.sh" check --quiet 2>/dev/null; then
+    ok "all registered npm globals present in all fnm versions"
+  else
+    DRIFT=$("$REPO/scripts/fnm-sync-globals.sh" check 2>&1 | grep -c "drift:" || true)
+    warn "$DRIFT drift(s) — run 'scripts/fnm-sync-globals.sh sync' to fix"
+  fi
+else
+  warn "fnm not in PATH — skipping globals check"
 fi
 
 echo
