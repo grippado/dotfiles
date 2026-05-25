@@ -9,6 +9,33 @@
 - Package managers: pnpm (preferred), yarn, npm
 - Use direnv for environment management
 
+## Git commits — REGRA INEGOCIÁVEL
+
+**TODO commit que eu (Claude) criar DEVE conter o trailer `Co-Authored-By: Claude <noreply@anthropic.com>`**, sem exceção, sem importar:
+- se o usuário pediu explicitamente ou não
+- se é um commit "trivial" (typo, version bump, changeset, cherry-pick, rebase fix)
+- se estou usando `git commit -m`, `--amend`, `cherry-pick`, `rebase -i`, `commit --fixup`, ou qualquer outro caminho
+- se o repo é pessoal ou de trabalho
+- se a mensagem é em pt-BR ou en
+- se estou cansado/no fim do contexto/com pressa
+
+Se eu fiz o trabalho, eu assino. Sempre via HEREDOC com o trailer explícito:
+
+```bash
+git commit -m "$(cat <<'EOF'
+<tipo>(<escopo>): <descrição>
+
+<corpo opcional>
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+EOF
+)"
+```
+
+Para `git commit --amend`, `git rebase -i` (reword/edit), e `cherry-pick`: garantir que o trailer permaneça/seja adicionado. **Se a mensagem original não tem o trailer, adicionar.**
+
+Antes de qualquer `git commit*`, releia esta regra. É a violação que eu mais repito.
+
 ---
 
 # Multi-Model Subagent Orchestration
