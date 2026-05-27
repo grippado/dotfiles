@@ -535,5 +535,122 @@ function sync-brain {
     echo "[brain] synced"
 }
 
+# Sync workspace repos: clone missing, fast-forward existing.
+# Manifest: ~/.dotfiles/configs/repos.txt (format: bucket/repo<TAB>url)
+# Usage:
+#   wsync                  # sync all
+#   wsync --dry-run        # show what would happen
+#   wsync --only isaac     # filter by bucket (isaac|personal|...)
+#   wsync --scan           # rebuild manifest from current ~/www state
+function wsync() {
+  local base="$HOME/www"
+  local manifest="$HOME/.dotfiles/configs/repos.txt"
+  local dry_run=0 only="" scan=0
+
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --dry-run) dry_run=1 ;;
+      --only) only="$2"; shift ;;
+      --scan) scan=1 ;;
+      -h|--help)
+        echo "wsync [--dry-run] [--only <bucket>] [--scan]"
+        return 0
+        ;;
+      *) echo "wsync: unknown arg: $1" >&2; return 2 ;;
+    esac
+    shift
+  done
+
+  if [ "$scan" -eq 1 ]; then
+    mkdir -p "$(dirname "$manifest")"
+    : > "$manifest.tmp"
+    for bucket_dir in "$base"/*/; do
+      [ -d "$bucket_dir" ] || continue
+      local bucket=$(basename "$bucket_dir")
+      for repo_dir in "$bucket_dir"*/; do
+        [ -d "$repo_dir/.git" ] || continue
+        local repo=$(basename "$repo_dir")
+        local url=$(git -C "$repo_dir" remote get-url origin 2>/dev/null) || continue
+        printf "%s/%s\t%s\n" "$bucket" "$repo" "$url" >> "$manifest.tmp"
+      done
+    done
+    sort "$manifest.tmp" > "$manifest" && rm "$manifest.tmp"
+    echo "[wsync] manifest updated: $(wc -l < "$manifest" | tr -d ' ') repos -> $manifest"
+    return 0
+  fi
+
+  if [ ! -f "$manifest" ]; then
+    echo "[wsync] manifest not found at $manifest" >&2
+    echo "        run: wsync --scan  (on a machine with repos already cloned)" >&2
+    return 1
+  fi
+
+  local total=0 cloned=0 pulled=0 skipped=0 failed=0
+  while IFS=$'\t' read -r slug url; do
+    [ -z "$slug" ] && continue
+    [ "${slug#\#}" != "$slug" ] && continue
+    local bucket="${slug%%/*}"
+    local repo="${slug#*/}"
+    [ -n "$only" ] && [ "$bucket" != "$only" ] && continue
+    total=$((total + 1))
+    local target="$base/$bucket/$repo"
+
+    if [ ! -d "$target/.git" ]; then
+      echo "[wsync] clone  $slug"
+      if [ "$dry_run" -eq 1 ]; then
+        cloned=$((cloned + 1))
+      else
+        mkdir -p "$base/$bucket"
+        if git clone "$url" "$target"; then
+          cloned=$((cloned + 1))
+        else
+          failed=$((failed + 1))
+        fi
+      fi
+      continue
+    fi
+
+    local branch=$(git -C "$target" symbolic-ref --short HEAD 2>/dev/null)
+    local default=$(git -C "$target" symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||')
+    [ -z "$default" ] && default="main"
+
+    if [ "$branch" != "$default" ]; then
+      echo "[wsync] skip   $slug (on $branch, default=$default)"
+      skipped=$((skipped + 1))
+      continue
+    fi
+
+    local dirty=0
+    [ -n "$(git -C "$target" status --porcelain 2>/dev/null)" ] && dirty=1
+
+    echo "[wsync] pull   $slug ($branch)"
+    if [ "$dry_run" -eq 1 ]; then
+      pulled=$((pulled + 1))
+      continue
+    fi
+
+    if [ "$dirty" -eq 1 ]; then
+      if ! git -C "$target" stash push -u -m "wsync auto-stash $(date +%Y%m%d-%H%M%S)" >/dev/null; then
+        echo "        ! stash failed, skipping"
+        failed=$((failed + 1))
+        continue
+      fi
+    fi
+
+    if git -C "$target" fetch --quiet && git -C "$target" pull --ff-only --quiet; then
+      pulled=$((pulled + 1))
+    else
+      echo "        ! pull failed (non-ff or network)"
+      failed=$((failed + 1))
+    fi
+
+    if [ "$dirty" -eq 1 ]; then
+      git -C "$target" stash pop >/dev/null 2>&1 || echo "        ! stash pop conflicted, check 'git stash list' in $target"
+    fi
+  done < "$manifest"
+
+  echo "[wsync] done: $total total, $cloned cloned, $pulled pulled, $skipped skipped, $failed failed"
+}
+
 # Load local/org-specific functions if available
 [ -f "$HOME/.zsh_functions_local" ] && source "$HOME/.zsh_functions_local"
