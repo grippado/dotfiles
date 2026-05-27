@@ -1,3 +1,6 @@
+~/.ai-memory-sync	git@github.com:grippado/ai-memory-sync.git
+~/.dotfiles-ai	git@github.com:grippado/dotfiles-ai.git
+~/.notes	git@github.com:grippado/notes.git
 isaac/arco-agents	git@github.com:OlaIsaac/arco-agents.git
 isaac/audit-service-poc	git@github.com:OlaIsaac/audit-service-poc.git
 isaac/backoffice	git@github.com:OlaIsaac/backoffice.git

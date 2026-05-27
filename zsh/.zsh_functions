@@ -554,6 +554,7 @@ function wsync() {
       --scan) scan=1 ;;
       -h|--help)
         echo "wsync [--dry-run] [--only <bucket>] [--scan]"
+        echo "  buckets: isaac, personal, home (entries prefixed with ~/ in manifest)"
         return 0
         ;;
       *) echo "wsync: unknown arg: $1" >&2; return 2 ;;
@@ -564,6 +565,8 @@ function wsync() {
   if [ "$scan" -eq 1 ]; then
     mkdir -p "$(dirname "$manifest")"
     : > "$manifest.tmp"
+    # Preserve ~/-prefixed (home) entries from existing manifest
+    [ -f "$manifest" ] && grep '^~/' "$manifest" >> "$manifest.tmp" 2>/dev/null
     for bucket_dir in "$base"/*/; do
       [ -d "$bucket_dir" ] || continue
       local bucket=$(basename "$bucket_dir")
@@ -574,7 +577,7 @@ function wsync() {
         printf "%s/%s\t%s\n" "$bucket" "$repo" "$url" >> "$manifest.tmp"
       done
     done
-    sort "$manifest.tmp" > "$manifest" && rm "$manifest.tmp"
+    sort -u "$manifest.tmp" > "$manifest" && rm "$manifest.tmp"
     echo "[wsync] manifest updated: $(wc -l < "$manifest" | tr -d ' ') repos -> $manifest"
     return 0
   fi
@@ -589,18 +592,26 @@ function wsync() {
   while IFS=$'\t' read -r slug url; do
     [ -z "$slug" ] && continue
     [ "${slug#\#}" != "$slug" ] && continue
-    local bucket="${slug%%/*}"
-    local repo="${slug#*/}"
+    local bucket="" repo="" target="" parent=""
+    if [ "${slug#\~/}" != "$slug" ]; then
+      bucket="home"
+      target="$HOME/${slug#\~/}"
+      parent="$HOME"
+    else
+      bucket="${slug%%/*}"
+      repo="${slug#*/}"
+      target="$base/$bucket/$repo"
+      parent="$base/$bucket"
+    fi
     [ -n "$only" ] && [ "$bucket" != "$only" ] && continue
     total=$((total + 1))
-    local target="$base/$bucket/$repo"
 
     if [ ! -d "$target/.git" ]; then
       echo "[wsync] clone  $slug"
       if [ "$dry_run" -eq 1 ]; then
         cloned=$((cloned + 1))
       else
-        mkdir -p "$base/$bucket"
+        mkdir -p "$parent"
         if git clone "$url" "$target"; then
           cloned=$((cloned + 1))
         else
