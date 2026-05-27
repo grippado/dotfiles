@@ -593,16 +593,19 @@ function wsync() {
     [ -z "$slug" ] && continue
     [ "${slug#\#}" != "$slug" ] && continue
     local bucket="" repo="" target="" parent=""
-    if [ "${slug#\~/}" != "$slug" ]; then
-      bucket="home"
-      target="$HOME/${slug#\~/}"
-      parent="$HOME"
-    else
-      bucket="${slug%%/*}"
-      repo="${slug#*/}"
-      target="$base/$bucket/$repo"
-      parent="$base/$bucket"
-    fi
+    case "$slug" in
+      '~/'*)
+        bucket="home"
+        target="$HOME/${slug#'~/'}"
+        parent="$HOME"
+        ;;
+      *)
+        bucket="${slug%%/*}"
+        repo="${slug#*/}"
+        target="$base/$bucket/$repo"
+        parent="$base/$bucket"
+        ;;
+    esac
     [ -n "$only" ] && [ "$bucket" != "$only" ] && continue
     total=$((total + 1))
 
