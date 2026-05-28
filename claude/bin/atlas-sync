@@ -75,8 +75,12 @@ trap 'rm -f "$NEW_MANAGED"' EXIT
 ALIAS_CLAIMS=$(mktemp)
 trap 'rm -f "$NEW_MANAGED" "$ALIAS_CLAIMS"' EXIT
 
-while IFS=$'\t' read -r scope path claude_dir shared; do
+while IFS=$'\t' read -r scope path claude_dir shared local_only; do
   [ "$claude_dir" = "null" ] && { log "skip scope '$scope' (claude_dir=null, shared=$shared)"; continue; }
+  if [ "$local_only" = "true" ]; then
+    log "skip scope '$scope' (local_only=true — commands stay inside repo, no global symlinks)"
+    continue
+  fi
   expanded="${path/#\~/$HOME}"
   cmd_dir="$expanded/$claude_dir/commands"
   if [ ! -d "$cmd_dir" ]; then
@@ -110,7 +114,7 @@ while IFS=$'\t' read -r scope path claude_dir shared; do
       printf '%s\t%s\t%s\n' "$verb" "$scope" "$src" >> "$ALIAS_CLAIMS"
     fi
   done < <(find "$cmd_dir" -maxdepth 1 -type f -name '*.md' | sort)
-done < <(jq -r '.scopes | to_entries[] | "\(.key)\t\(.value.path)\t\(.value.claude_dir // "null")\t\(.value.shared // false)"' "$REGISTRY")
+done < <(jq -r '.scopes | to_entries[] | "\(.key)\t\(.value.path)\t\(.value.claude_dir // "null")\t\(.value.shared // false)\t\(.value.local_only // false)"' "$REGISTRY")
 
 # ── 3. Create bare aliases ────────────────────────────────────────────────────
 while IFS=$'\t' read -r verb scope _src; do

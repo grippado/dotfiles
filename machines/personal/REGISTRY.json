@@ -27,7 +27,8 @@
       "path": "~/www/isaac/gravity-design-system",
       "claude_dir": ".claude",
       "shared": true,
-      "_note": "Shared team repo (Arco/Isaac). Atlas is read-only here: symlinks created in ~/.claude/commands/, but no in-repo edits without team PR."
+      "local_only": true,
+      "_note": "Shared team repo (Arco/Isaac). Atlas is read-only here. local_only: true → não criar symlinks globais em ~/.claude/commands/; comandos só aparecem dentro do próprio repo (evita duplicação verb / verb:scope ao cd no repo)."
     },
     "isaac": {
       "path": "~/www/isaac",

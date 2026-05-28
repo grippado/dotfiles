@@ -8,13 +8,14 @@ user_invocable: true
 
 Skill orquestradora de PR review para o time Arco. Coleta contexto, delega análise ao subagent `arco-pr-reviewer`, e persiste o resultado num arquivo markdown padronizado no vault Obsidian do Gabriel.
 
-**Out of scope (NUNCA faça):**
+**Out of scope (NUNCA faça sem confirmação explícita):**
 
 - Não rodar `pnpm test` / `pnpm typecheck` / `pnpm lint` / qualquer suite de testes
-- Não comentar na PR (`gh pr comment`, `gh pr review`)
 - Não fazer commit, push, nem modificar arquivos do repo sob review
 - Não aprovar nem mergear (`gh pr review --approve`, `gh pr merge`)
-- Não escrever em lugar nenhum exceto o arquivo final no vault
+- Não escrever em lugar nenhum exceto o arquivo final no vault E (opcionalmente) a review da PR via `gh api` no passo 8
+
+**Sobre postar na PR:** após gravar o arquivo no Obsidian (passo 6), o passo 8 oferece opções via `AskUserQuestion` para postar um subset dos comentários inline. Nunca postar sem o usuário escolher uma opção positiva.
 
 ## Inputs aceitos
 
@@ -196,7 +197,7 @@ Use a Write tool para gravar o arquivo no caminho calculado.
 
 ### 7. Resposta no chat
 
-Depois de gravar com sucesso, responda **apenas** com:
+Depois de gravar com sucesso, responda com:
 
 ```
 Review salvo em {caminho-completo-do-arquivo}.
@@ -205,6 +206,61 @@ Veredito: {STATUS} — {1 frase do veredito}.
 ```
 
 **Não** repita o conteúdo do review no chat. **Não** faça resumo expandido. O arquivo é a fonte de verdade.
+
+Em seguida, vá direto para o passo 8 (sem esperar input adicional do usuário). Se o review **não tem PR number** (branch local sem PR aberta) ou se o subagent não retornou nenhum comentário 🔴/🟡/🔵/🟢/⚠️ acionável, **pule o passo 8** — apenas terminar.
+
+### 8. Oferecer publicação inline na PR
+
+Se há PR aberta e comentários acionáveis no review, perguntar via `AskUserQuestion` (uma única question, single-select):
+
+- **Header:** `Postar na PR?`
+- **Question:** `Quer postar algum subset dos comentários direto na PR #{number}?`
+- **Options (nessa ordem):**
+  1. `Prioridades + kudos (Recomendado)` — descrição: `Posta 🔴 + ⚠️ + itens da lista PRIORIDADE + todos os 🟢 inline. Padrão histórico do Gabriel.`
+  2. `Só prioridades` — descrição: `Posta 🔴 + ⚠️ + itens da lista PRIORIDADE inline. Sem kudos.`
+  3. `Tudo` — descrição: `Posta todos os comentários do review (🔴 🟡 🔵 🟢 ⚠️) inline. 💭 nunca vai.`
+  4. `Não postar` — descrição: `Review fica só no Obsidian. Eu reviso antes de decidir.`
+
+> A opção "Recomendado" é a primeira e tem `(Recomendado)` no label, conforme padrão do tool.
+
+Se o usuário escolher uma opção positiva (1, 2 ou 3), montar a review e postar via `gh api`:
+
+```bash
+gh api -X POST repos/{owner}/{repo}/pulls/{number}/reviews --input <json-file>
+```
+
+JSON shape esperado:
+
+```json
+{
+  "event": "COMMENT",
+  "body": "<corpo com kudos de arquivo-inteiro novo, ex: changeset>",
+  "comments": [
+    { "path": "...", "line": N, "side": "RIGHT", "body": "🟡 ..." },
+    { "path": "...", "start_line": N, "line": M, "side": "RIGHT", "body": "🟢 ..." }
+  ]
+}
+```
+
+Regras para montar o payload:
+
+- `event` **sempre** `COMMENT`. Nunca `APPROVE` nem `REQUEST_CHANGES` sem pedido explícito separado.
+- Cada comentário usa `side: "RIGHT"`. Range multi-linha → `start_line` + `line`. Linha única → só `line`.
+- **Validar os números de linha contra o diff real** antes de postar — os números no markdown do vault podem estar relativos a hunks ou desatualizados. Buscar a linha no novo arquivo (RIGHT side) procurando pelo trecho citado.
+- Kudos sobre arquivo inteiro novo (ex: `.changeset/*`) vão no `body` da review (não dão pra inline em "arquivo todo").
+- Manter PT-BR com acentuação correta e o emoji prefix (🔴 🟡 🔵 🟢 ⚠️) em cada `body` de comentário, para casar com a legenda do review.
+- **Sem em-dashes** nos textos publicados (regra global do usuário — usar vírgula, dois-pontos, parênteses).
+- Se a PR está em repo cross-org sem acesso de escrita, capturar o erro do `gh api` e reportar ao usuário sem retentar.
+
+Após `gh api` retornar sucesso (com `html_url` da review), responder no chat **só** com:
+
+```
+Review postada: {html_url}
+
+{n} inline + {m} kudos no corpo. Submetida como COMMENTED (não-bloqueante).
+```
+
+Se o usuário escolher "Não postar" ou cancelar a question, apenas terminar (sem mensagem extra).
 
 ## Notas finais
 
