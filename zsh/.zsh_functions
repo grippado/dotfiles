@@ -545,22 +545,26 @@ function sync-brain {
 function wsync() {
   local base="$HOME/www"
   local manifest="$HOME/.dotfiles/configs/repos.txt"
-  local dry_run=0 only="" scan=0
+  local dry_run=0 only="" scan=0 verbose=0
 
   while [ $# -gt 0 ]; do
     case "$1" in
       --dry-run) dry_run=1 ;;
       --only) only="$2"; shift ;;
       --scan) scan=1 ;;
+      -v|--verbose) verbose=1 ;;
       -h|--help)
-        echo "wsync [--dry-run] [--only <bucket>] [--scan]"
+        echo "wsync [--dry-run] [--only <bucket>] [--scan] [-v|--verbose]"
         echo "  buckets: isaac, personal, home (entries prefixed with ~/ in manifest)"
+        echo "  --verbose: show fetch details, sha comparison, merge-detection method per repo"
         return 0
         ;;
       *) echo "wsync: unknown arg: $1" >&2; return 2 ;;
     esac
     shift
   done
+
+  _wsv() { [ "$verbose" -eq 1 ] && echo "         $*"; }
 
   if [ "$scan" -eq 1 ]; then
     mkdir -p "$(dirname "$manifest")"
@@ -588,7 +592,10 @@ function wsync() {
     return 1
   fi
 
-  local total=0 cloned=0 pulled=0 skipped=0 failed=0
+  local total=0 cloned=0 pulled=0 up_to_date=0 auto_switched=0 skipped=0 failed=0
+  local -a attention=()
+  local has_gh=0
+  command -v gh >/dev/null 2>&1 && has_gh=1
   while IFS=$'\t' read -r slug url; do
     [ -z "$slug" ] && continue
     [ "${slug#\#}" != "$slug" ] && continue
@@ -610,7 +617,8 @@ function wsync() {
     total=$((total + 1))
 
     if [ ! -d "$target/.git" ]; then
-      echo "[wsync] clone  $slug"
+      [ "$verbose" -eq 1 ] && echo "──── $slug ────"
+      echo "[wsync] 🆕 clone     $slug"
       if [ "$dry_run" -eq 1 ]; then
         cloned=$((cloned + 1))
       else
@@ -627,43 +635,166 @@ function wsync() {
     local branch=$(git -C "$target" symbolic-ref --short HEAD 2>/dev/null)
     local default=$(git -C "$target" symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||')
     [ -z "$default" ] && default="main"
+    local remote_url=$(git -C "$target" remote get-url origin 2>/dev/null)
+    local is_github=0
+    [[ "$remote_url" == *github.com* ]] && is_github=1
 
+    if [ "$verbose" -eq 1 ]; then
+      echo "──── $slug ────"
+      _wsv "📂 path     $target"
+      _wsv "🌿 branch   $branch  (default: $default)"
+      _wsv "🔗 remote   $remote_url"
+    fi
+
+    # Fetch once up front (cheap; needed for ancestor checks and remote comparison)
+    if [ "$dry_run" -eq 0 ]; then
+      _wsv "🔍 fetch    origin..."
+      git -C "$target" fetch --quiet origin 2>/dev/null || {
+        echo "[wsync] ❌ fetch     $slug  (network?)"
+        failed=$((failed + 1))
+        continue
+      }
+    fi
+
+    # ── Case A: on a non-default branch ───────────────────────────────────────
     if [ "$branch" != "$default" ]; then
-      echo "[wsync] skip   $slug (on $branch, default=$default)"
+      if [ "$dry_run" -eq 1 ]; then
+        echo "[wsync] ⏭️  skip      $slug  (on $branch, default=$default — dry-run)"
+        skipped=$((skipped + 1))
+        continue
+      fi
+
+      local dirty=0
+      [ -n "$(git -C "$target" status --porcelain 2>/dev/null)" ] && dirty=1
+      _wsv "🧹 dirty    $dirty"
+
+      # Detect if branch tip is reachable from origin/default (ff/merge commits)
+      local merged=0 merge_method=""
+      if git -C "$target" merge-base --is-ancestor HEAD "origin/$default" 2>/dev/null; then
+        merged=1
+        merge_method="ancestor of origin/$default"
+      elif [ "$has_gh" -eq 1 ] && [ "$is_github" -eq 1 ]; then
+        # Squash merges: branch HEAD not in main, but PR was merged
+        _wsv "🔍 gh PR    checking squash-merge fallback..."
+        local pr_merged=$(gh -R "$remote_url" pr list --head "$branch" --state merged --json number -L 1 2>/dev/null | grep -c '"number"')
+        [ "$pr_merged" -gt 0 ] && { merged=1; merge_method="gh: PR merged (squash)"; }
+      fi
+      _wsv "🎯 merged   $merged${merge_method:+  ($merge_method)}"
+
+      if [ "$merged" -eq 1 ] && [ "$dirty" -eq 0 ]; then
+        echo "[wsync] 🔀 switch    $slug  ($branch merged → $default)"
+        if git -C "$target" checkout --quiet "$default" && git -C "$target" pull --ff-only --quiet; then
+          auto_switched=$((auto_switched + 1))
+          attention+=("🔀 $slug — auto-switched $branch → $default (PR was merged)")
+        else
+          echo "        ❌ switch/pull failed"
+          failed=$((failed + 1))
+        fi
+        continue
+      fi
+
+      if [ "$merged" -eq 1 ] && [ "$dirty" -eq 1 ]; then
+        echo "[wsync] ⏭️  skip      $slug  (on $branch — merged but dirty)"
+        attention+=("⚠️  $slug — $branch merged, but local changes prevent switch (commit/stash and re-run)")
+        skipped=$((skipped + 1))
+        continue
+      fi
+
+      # Not merged
+      local has_upstream=0
+      git -C "$target" rev-parse --verify --quiet "@{u}" >/dev/null 2>&1 && has_upstream=1
+      if [ "$has_upstream" -eq 0 ]; then
+        echo "[wsync] ⏭️  skip      $slug  (on $branch — never pushed)"
+        attention+=("⚠️  $slug — $branch has local commits never pushed to remote")
+      else
+        local ahead=$(git -C "$target" rev-list --count "@{u}..HEAD" 2>/dev/null)
+        echo "[wsync] ⏭️  skip      $slug  (on $branch — $ahead unpushed, not merged)"
+        attention+=("⚠️  $slug — $branch ahead of upstream by $ahead commits, not yet merged into $default")
+      fi
+      skipped=$((skipped + 1))
+      continue
+    fi
+
+    # ── Case B: on default branch — compare with origin ───────────────────────
+    if [ "$dry_run" -eq 1 ]; then
+      echo "[wsync] ⬇️  pull      $slug  ($branch) — dry-run"
+      pulled=$((pulled + 1))
+      continue
+    fi
+
+    local local_sha=$(git -C "$target" rev-parse HEAD 2>/dev/null)
+    local remote_sha=$(git -C "$target" rev-parse "origin/$default" 2>/dev/null)
+    _wsv "📊 local    ${local_sha:0:7}"
+    _wsv "📊 remote   ${remote_sha:0:7}"
+
+    if [ -n "$local_sha" ] && [ "$local_sha" = "$remote_sha" ]; then
+      echo "[wsync] ✅ ok        $slug  (up to date)"
+      up_to_date=$((up_to_date + 1))
+      continue
+    fi
+
+    # Check if local is ahead of remote (unpushed commits on default branch)
+    local ahead_count=$(git -C "$target" rev-list --count "origin/$default..HEAD" 2>/dev/null)
+    local behind_count=$(git -C "$target" rev-list --count "HEAD..origin/$default" 2>/dev/null)
+    _wsv "📊 ahead     $ahead_count    behind  $behind_count"
+
+    if [ "$ahead_count" -gt 0 ] && [ "$behind_count" -eq 0 ]; then
+      echo "[wsync] ⚠️  ahead     $slug  ($default ahead by $ahead_count unpushed)"
+      attention+=("⚠️  $slug — $default ahead of origin by $ahead_count unpushed commits")
       skipped=$((skipped + 1))
       continue
     fi
 
     local dirty=0
     [ -n "$(git -C "$target" status --porcelain 2>/dev/null)" ] && dirty=1
+    _wsv "🧹 dirty    $dirty"
 
-    echo "[wsync] pull   $slug ($branch)"
-    if [ "$dry_run" -eq 1 ]; then
-      pulled=$((pulled + 1))
-      continue
-    fi
-
+    echo "[wsync] ⬇️  pull      $slug  ($branch, behind $behind_count)"
     if [ "$dirty" -eq 1 ]; then
+      _wsv "📦 stash    saving local changes..."
       if ! git -C "$target" stash push -u -m "wsync auto-stash $(date +%Y%m%d-%H%M%S)" >/dev/null; then
-        echo "        ! stash failed, skipping"
+        echo "        ❌ stash failed, skipping"
         failed=$((failed + 1))
         continue
       fi
     fi
 
-    if git -C "$target" fetch --quiet && git -C "$target" pull --ff-only --quiet; then
+    if git -C "$target" pull --ff-only --quiet; then
       pulled=$((pulled + 1))
     else
-      echo "        ! pull failed (non-ff or network)"
+      echo "        ❌ pull failed (non-ff or network)"
       failed=$((failed + 1))
+      attention+=("❌ $slug — pull failed (non-ff: local commits diverge from remote)")
     fi
 
     if [ "$dirty" -eq 1 ]; then
-      git -C "$target" stash pop >/dev/null 2>&1 || echo "        ! stash pop conflicted, check 'git stash list' in $target"
+      git -C "$target" stash pop >/dev/null 2>&1 || {
+        echo "        ⚠️  stash pop conflicted, check 'git stash list' in $target"
+        attention+=("⚠️  $slug — stash pop conflict in $target")
+      }
     fi
   done < "$manifest"
 
-  echo "[wsync] done: $total total, $cloned cloned, $pulled pulled, $skipped skipped, $failed failed"
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "📊 wsync summary  ($total repos)"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  printf "  ✅ up-to-date   %3d\n" "$up_to_date"
+  printf "  ⬇️  pulled       %3d\n" "$pulled"
+  printf "  🔀 switched     %3d\n" "$auto_switched"
+  printf "  🆕 cloned       %3d\n" "$cloned"
+  printf "  ⏭️  skipped      %3d\n" "$skipped"
+  printf "  ❌ failed       %3d\n" "$failed"
+
+  if [ ${#attention[@]} -gt 0 ]; then
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "⚠️  attention needed  (${#attention[@]})"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    for line in "${attention[@]}"; do
+      echo "  $line"
+    done
+  fi
 }
 
 # Load local/org-specific functions if available
