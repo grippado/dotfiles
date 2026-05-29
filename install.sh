@@ -100,6 +100,16 @@ if [ -x "$ZED_CLI" ]; then
     echo "==> Linked zed -> $ZED_CLI"
 fi
 
+# Zed settings: versiona ~/.config/zed/settings.json no dotfiles
+if [ -f "$DFL/zed/settings.json" ]; then
+    mkdir -p "$HOME/.config/zed"
+    if [ -e "$HOME/.config/zed/settings.json" ] && [ ! -L "$HOME/.config/zed/settings.json" ]; then
+        mv "$HOME/.config/zed/settings.json" "$HOME/.config/zed/settings.json.bak.$(date +%Y%m%d%H%M%S)"
+    fi
+    ln -sf "$DFL/zed/settings.json" "$HOME/.config/zed/settings.json"
+    echo "==> Linked zed settings"
+fi
+
 echo '##################################################################'
 echo '######################  Reload Configs  ##########################'
 echo '##################################################################'
