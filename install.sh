@@ -91,6 +91,15 @@ if [ -f "$DFL/claude/install.sh" ]; then
     source "$DFL/claude/install.sh"
 fi
 
+# ── Zed editor CLI (macOS) ───────────────────────────────────
+# Expoe `zed` / `zed .` no PATH, espelhando code/cursor.
+ZED_CLI="/Applications/Zed.app/Contents/MacOS/cli"
+if [ -x "$ZED_CLI" ]; then
+    mkdir -p "$HOME/.local/bin"
+    ln -sf "$ZED_CLI" "$HOME/.local/bin/zed"
+    echo "==> Linked zed -> $ZED_CLI"
+fi
+
 echo '##################################################################'
 echo '######################  Reload Configs  ##########################'
 echo '##################################################################'

@@ -113,6 +113,9 @@ alias cleanup-pnpm="pnpm store prune"
 alias code.="code ."
 alias codei="code-insiders ."
 
+# Zed
+alias zed.="zed ."
+
 # Tmux aliases
 alias t="tmux"
 alias ta="tmux attach"
