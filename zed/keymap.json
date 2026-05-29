@@ -1,0 +1,19 @@
+// Zed keymap
+//
+// Versionado em ~/.dotfiles/zed/keymap.json e symlinkado para
+// ~/.config/zed/keymap.json pelo install.sh.
+//
+// O base_keymap "VSCode" está no settings.json; aqui vão só os overrides.
+// Docs: https://zed.dev/docs/key-bindings
+//
+// Exemplo:
+// [
+//   {
+//     "context": "Editor",
+//     "bindings": {
+//       "cmd-shift-d": "editor::DuplicateLineDown"
+//     }
+//   }
+// ]
+[
+]

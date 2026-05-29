@@ -14,6 +14,7 @@
   // Adicionar/remover slugs aqui em vez de instalar só pela UI.
   // Go já é built-in no Zed (não precisa extensão).
   // Opcionais p/ adicionar via UI: markdown-oxide (PKM/wikilinks), mermaid.
+  "diff_view_style": "split",
   "auto_install_extensions": {
     "catppuccin": true,
     "catppuccin-icons": true,

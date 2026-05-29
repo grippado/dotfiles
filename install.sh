@@ -110,6 +110,27 @@ if [ -f "$DFL/zed/settings.json" ]; then
     echo "==> Linked zed settings"
 fi
 
+# Zed keymap
+if [ -f "$DFL/zed/keymap.json" ]; then
+    mkdir -p "$HOME/.config/zed"
+    if [ -e "$HOME/.config/zed/keymap.json" ] && [ ! -L "$HOME/.config/zed/keymap.json" ]; then
+        mv "$HOME/.config/zed/keymap.json" "$HOME/.config/zed/keymap.json.bak.$(date +%Y%m%d%H%M%S)"
+    fi
+    ln -sf "$DFL/zed/keymap.json" "$HOME/.config/zed/keymap.json"
+    echo "==> Linked zed keymap"
+fi
+
+# Zed themes (pasta inteira symlinkada)
+if [ -d "$DFL/zed/themes" ]; then
+    mkdir -p "$HOME/.config/zed"
+    if [ -d "$HOME/.config/zed/themes" ] && [ ! -L "$HOME/.config/zed/themes" ]; then
+        cp -n "$HOME/.config/zed/themes/"*.json "$DFL/zed/themes/" 2>/dev/null || true
+        rm -rf "$HOME/.config/zed/themes"
+    fi
+    ln -sf "$DFL/zed/themes" "$HOME/.config/zed/themes"
+    echo "==> Linked zed themes"
+fi
+
 echo '##################################################################'
 echo '######################  Reload Configs  ##########################'
 echo '##################################################################'
