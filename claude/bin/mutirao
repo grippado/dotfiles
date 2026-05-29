@@ -277,7 +277,7 @@ cmd_control() {
     local setup_fail=$(( ${#runnable[@]} - ${#launched[@]} ))
     if [ "$setup_fail" -gt 0 ]; then
       err "  leva $leva: $setup_fail mão(s) não lançada(s) por falha de setup. Parando para inspeção."
-      err "  runtime em $run_dir"; _control_footer "$in_pane" "$run_id"; return 1
+      err "  runtime em $run_dir"; finalize_run "$run_dir" "$run_id" "$json" "$in_pane" failed; return 1
     fi
     [ "${#launched[@]}" -eq 0 ] && continue
 
@@ -289,7 +289,7 @@ cmd_control() {
     done
     if [ "$leva_fail" -ne 0 ]; then
       err "  leva $leva teve $leva_fail falha(s). Parando para inspeção (worktrees preservados em $run_dir)."
-      _control_footer "$in_pane" "$run_id"; return 1
+      finalize_run "$run_dir" "$run_id" "$json" "$in_pane" failed; return 1
     fi
 
     # aprovação antes da próxima leva
@@ -301,10 +301,8 @@ cmd_control() {
         printf '\033[33m? Liberar a próxima leva agora? [y = sim · N = encerrar este run] \033[0m'; read -r ans || ans=""
         case "$ans" in
           y|Y|s|S) ;;
-          *) echo; info "ENCERRADO na leva $leva. Levas até aqui concluídas; as próximas NÃO foram lançadas."
-             info "Worktrees e branches preservados em $run_dir."
-             info "Pra retomar da próxima leva quando quiser:  mutirao resume $run_id"
-             _control_footer "$in_pane" "$run_id"; return 0 ;;
+          *) echo; info "ENCERRADO na leva $leva (próximas não lançadas). Retomar: mutirao resume $run_id"
+             finalize_run "$run_dir" "$run_id" "$json" "$in_pane" paused; return 0 ;;
         esac
       fi
       # modo visual: limpa os panes da leva concluída pra próxima leva entrar limpa
@@ -312,16 +310,27 @@ cmd_control() {
     fi
   done
 
+  finalize_run "$run_dir" "$run_id" "$json" "$in_pane" done
+}
+
+# Tally + resumo + nota de resultado + rodapé. Chamado em TODOS os caminhos de
+# saída (done/paused/failed) pra a nota de resultado sempre existir.
+finalize_run() {
+  local run_dir="$1" run_id="$2" json="$3" in_pane="$4" state="${5:-done}"
   echo
   local n_ok=0 n_skip=0 n_fail=0
   for f in "$run_dir"/*.exit; do
     [ -e "$f" ] || continue
     case "$(cat "$f")" in 0) n_ok=$((n_ok+1));; skipped-*) n_skip=$((n_skip+1));; *) n_fail=$((n_fail+1));; esac
   done
-  if [ "$n_fail" -eq 0 ]; then ok "mutirão concluído: $n_ok OK, $n_skip pulada(s) ($run_id)"
-  else err "mutirão concluído com $n_fail falha(s), $n_ok OK, $n_skip pulada(s) ($run_id)"; fi
-  write_result_note "$run_dir" "$run_id" "$json" "$n_ok" "$n_skip" "$n_fail"
-  info "worktrees em $run_dir"
+  case "$state" in
+    paused) info "mutirão PAUSADO: $n_ok OK, $n_skip pulada(s), $n_fail falha(s) ($run_id)" ;;
+    failed) err "mutirão FALHOU: $n_fail falha(s), $n_ok OK, $n_skip pulada(s) ($run_id)" ;;
+    *)      if [ "$n_fail" -eq 0 ]; then ok "mutirão concluído: $n_ok OK, $n_skip pulada(s) ($run_id)"
+            else err "mutirão concluído com $n_fail falha(s), $n_ok OK, $n_skip pulada(s) ($run_id)"; fi ;;
+  esac
+  write_result_note "$run_dir" "$run_id" "$json" "$n_ok" "$n_skip" "$n_fail" "$state"
+  info "worktrees em $run_dir | clean: mutirao clean $run_id"
   _control_footer "$in_pane" "$run_id"
 }
 
@@ -337,14 +346,14 @@ _control_footer() {
 # Grava nota de resultado no 0-inbox do vault (pending_organize → /organize adota).
 # Best-effort: se não houver vault, só avisa e segue.
 write_result_note() {
-  local run_dir="$1" run_id="$2" json="$3" n_ok="$4" n_skip="$5" n_fail="$6"
+  local run_dir="$1" run_id="$2" json="$3" n_ok="$4" n_skip="$5" n_fail="$6" state="${7:-}"
   local inbox="$NOTES_VAULT/0-inbox"
   [ -d "$inbox" ] || { info "vault inbox não encontrado ($inbox) — nota de resultado pulada"; return 0; }
 
   local run_name; run_name="$(echo "$json" | jq -r '.run // "mutirao"')"
   local d t; d="$(date +%Y-%m-%d)"; t="$(date +%H:%M)"
   local out="$inbox/$(date +%Y-%m-%d-%H%M)-mutirao-result-$run_name.md"
-  local status="done"; [ "$n_fail" -gt 0 ] && status="failed"
+  local status="${state:-done}"; [ -z "$state" ] && { status="done"; [ "$n_fail" -gt 0 ] && status="failed"; }
 
   {
     echo '---'
@@ -485,17 +494,18 @@ cmd_status() {
 
 # ── clean ─────────────────────────────────────────────────────────────────────
 cmd_clean() {
-  local target="" keep_branches=0
+  local target="" keep_branches=0 keep_sessions=0
   while [ $# -gt 0 ]; do
     case "$1" in
       --keep-branches) keep_branches=1 ;;
+      --keep-sessions) keep_sessions=1 ;;
       --all) target="--all" ;;
       -*) die "flag desconhecida: $1" ;;
       *) target="$1" ;;
     esac
     shift
   done
-  [ -n "$target" ] || die "uso: mutirao clean <run_id>|--all [--keep-branches]"
+  [ -n "$target" ] || die "uso: mutirao clean <run_id>|--all [--keep-branches] [--keep-sessions]"
   local runs=()
   if [ "$target" = "--all" ]; then
     [ -d "$RUNS_DIR" ] && while read -r r; do runs+=("$r"); done < <(ls -1 "$RUNS_DIR" 2>/dev/null)
@@ -523,6 +533,14 @@ cmd_clean() {
         local rp br; IFS=$'\t' read -r rp br < "$bf"
         [ -n "$rp" ] && [ -n "$br" ] || continue
         if git -C "$rp" branch -D "$br" >/dev/null 2>&1; then echo "    branch deletada: $br"; fi
+      done
+    fi
+    # remove os projetos-por-worktree do Claude Code criados por este run (transcripts
+    # órfãos, pq o worktree some; o registro durável são as notas do /ship no vault).
+    if [ "$keep_sessions" -eq 0 ]; then
+      for pd in "$HOME/.claude/projects/"*mutirao-runs-"$run_id"-mao-*; do
+        [ -d "$pd" ] || continue
+        rm -rf "$pd" && echo "    sessão (transcript) removida: $(basename "$pd")"
       done
     fi
     tmux kill-session -t "mutirao-$run_id" 2>/dev/null || true
@@ -555,7 +573,9 @@ mutirao — orquestrador de tasks em paralelo (tmux + git worktrees)
       Retoma um run encerrado/pausado, pulando as levas já concluídas e
       continuando da próxima leva pendente.
   mutirao status [<run_id>]            Lista runs ou detalha uma.
-  mutirao clean  <run_id>|--all [--keep-branches]   Remove worktrees, branches, tmux e runtime.
+  mutirao clean  <run_id>|--all [--keep-branches] [--keep-sessions]
+      Remove worktrees, branches, sessão tmux, runtime e os transcripts órfãos
+      em ~/.claude/projects. --keep-branches/--keep-sessions preservam cada um.
 EOF
       ;;
     *) die "subcomando desconhecido: $sub (veja: mutirao --help)" ;;

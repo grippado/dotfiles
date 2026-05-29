@@ -9,8 +9,11 @@ After implementing the requested feature:
 3. Spawn `git-assistant` to prepare conventional commit messages
 4. Spawn `memory-extractor` to save key decisions
 
-5. **Detect PR and persist executive summary to vault** (main thread + context-keeper):
+5. **Garantir PR em DRAFT e persistir resumo executivo no vault** (main thread + context-keeper):
    - Run `gh pr view --json number,title,url,headRefName,baseRefName,body,isDraft 2>/dev/null` para detectar PR aberta na branch atual.
+   - **Se NÃO houver PR aberta**, criar como **rascunho**: `gh pr create --draft --title "<do doc-writer>" --body "<do doc-writer>"` (ou `--fill` se faltar título/corpo).
+   - **Se houver PR aberta e não for draft** (`isDraft=false`), convertê-la para rascunho: `gh pr ready --undo`.
+   - **Regra inegociável:** toda PR aberta/gerida pelo `/ship` é **draft** por padrão. O autor marca como "ready for review" manualmente, depois de revisar. (status no frontmatter da nota = `draft`.)
    - Identificar o repo (`basename $(git rev-parse --show-toplevel)`) e mapear pro contexto do vault:
      - Repos sob `~/www/isaac/*` → `~/.notes/1-contexts/arco/pr-reviews/<repo>/`
      - Outros → perguntar ao usuário o contexto, ou usar `~/.notes/0-inbox/`

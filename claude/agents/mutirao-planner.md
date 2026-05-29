@@ -39,7 +39,12 @@ Você também recebe o **mapa repo→path local** (ex.: `communication-api` → 
 ### 4. Prompt em formato perfeito (envelope)
 Para cada mão, o `prompt` final = o conteúdo self-contained da issue/task + um envelope do mutirão:
 - Reforce que o agente só tem acesso ao **repo daquela mão** e ao texto da issue (sem prd/drt/plan).
-- Ao final, a diretiva de fechamento: implementar seguindo os critérios, rodar testes/lint, e **disparar `/ship`** quando os critérios passarem.
+- **Modo mutirão (custo/tempo) — obrigatório no envelope:**
+  - **NÃO** executar o *Agent Workflow* / pipeline de self-review do projeto (revisão iterativa, múltiplas rodadas). Implementar direto o que Escopo/DoD pedem.
+  - **NÃO** rodar NENHUMA revisão da PR ao final: nem self-review, nem `/review-pr`, nem `/code-review`, nem `code-reviewer`. A revisão é feita por humano depois, na PR draft.
+  - Rodar testes e lint **uma vez** pra validar; não ficar iterando além do necessário.
+  - Abrir a PR em **DRAFT** via `/ship` (o `/ship` já garante draft).
+- Ao final, a diretiva de fechamento: implementar seguindo os critérios, rodar testes/lint uma vez, e **disparar `/ship`** (que abre/garante a PR em draft) quando os critérios passarem.
 - NÃO invente requisitos; só envelope + o conteúdo que já existe.
 
 ### 5. Saída
