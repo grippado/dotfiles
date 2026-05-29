@@ -214,13 +214,13 @@ function pypkginit() {
 function lsp() {
     # Get all items (files and directories) excluding hidden files
     local items=$(ls -1 2>/dev/null | sort)
-    
+
     # If no items found, show message
     if [[ -z "$items" ]]; then
         echo "Empty directory"
         return
     fi
-    
+
     # Use fzf to browse with enhanced preview
     echo "$items" | fzf \
         --height=80% \
@@ -231,7 +231,7 @@ function lsp() {
             if [[ -d {} ]]; then
                 echo "📁 Directory: {}"
                 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                
+
                 # Check if directory is readable
                 if [[ -r {} ]]; then
                     size=$(du -sh {} 2>/dev/null | cut -f1)
@@ -240,17 +240,17 @@ function lsp() {
                     else
                         echo "📊 Size: calculating..."
                     fi
-                    
+
                     count=$(find {} -maxdepth 1 2>/dev/null | wc -l | tr -d " ")
                     if [[ $count -gt 1 ]]; then
                         echo "📈 Items: $((count - 1)) files/folders"
                     else
                         echo "📈 Items: 0 files/folders"
                     fi
-                    
+
                     echo ""
                     echo "📄 Contents:"
-                    
+
                     # Try different listing approaches
                     if ls -la {} >/dev/null 2>&1; then
                         ls -la {} 2>/dev/null | head -15
@@ -273,7 +273,7 @@ function lsp() {
             else
                 echo "📄 File: {}"
                 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                
+
                 # File size and permissions
                 if [[ -r {} ]]; then
                     size=$(ls -lh {} 2>/dev/null | awk "{print \$5}")
@@ -282,7 +282,7 @@ function lsp() {
                     echo "🔍 Type: ${filetype:-unknown}"
                     echo ""
                     echo "📄 Preview:"
-                    
+
                     # Enhanced file type detection and preview
                     if [[ -f {} ]]; then
                         case "${{}##*.}" in
@@ -352,13 +352,13 @@ function lsp() {
 function lsph() {
     # Get all items (files and directories) including hidden files
     local items=$(ls -1A 2>/dev/null | sort)
-    
+
     # If no items found, show message
     if [[ -z "$items" ]]; then
         echo "Empty directory"
         return
     fi
-    
+
     # Use fzf to browse with enhanced preview
     echo "$items" | fzf \
         --height=80% \
@@ -369,7 +369,7 @@ function lsph() {
             if [[ -d {} ]]; then
                 echo "📁 Directory: {}"
                 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                
+
                 # Check if directory is readable
                 if [[ -r {} ]]; then
                     size=$(du -sh {} 2>/dev/null | cut -f1)
@@ -378,17 +378,17 @@ function lsph() {
                     else
                         echo "📊 Size: calculating..."
                     fi
-                    
+
                     count=$(find {} -maxdepth 1 2>/dev/null | wc -l | tr -d " ")
                     if [[ $count -gt 1 ]]; then
                         echo "📈 Items: $((count - 1)) files/folders"
                     else
                         echo "📈 Items: 0 files/folders"
                     fi
-                    
+
                     echo ""
                     echo "📄 Contents (including hidden):"
-                    
+
                     # Try different listing approaches with hidden files
                     if ls -laA {} >/dev/null 2>&1; then
                         ls -laA {} 2>/dev/null | head -15
@@ -411,7 +411,7 @@ function lsph() {
             else
                 echo "📄 File: {}"
                 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                
+
                 # File size and permissions
                 if [[ -r {} ]]; then
                     size=$(ls -lh {} 2>/dev/null | awk "{print \$5}")
@@ -420,7 +420,7 @@ function lsph() {
                     echo "🔍 Type: ${filetype:-unknown}"
                     echo ""
                     echo "📄 Preview:"
-                    
+
                     # Enhanced file type detection and preview
                     if [[ -f {} ]]; then
                         case "${{}##*.}" in
@@ -795,6 +795,21 @@ function wsync() {
       echo "  $line"
     done
   fi
+}
+# deck2pdf <url> [output.pdf] [size]
+# Converts a Reveal.js presentation served at <url> into a PDF via decktape.
+# Defaults: output = <last-url-segment>.pdf, size = 1280x720.
+# ex: deck2pdf http://localhost:5173/talks/automating-arco-design-system/
+# ex: deck2pdf http://localhost:5173/talks/foo/ foo.pdf 1920x1080
+function deck2pdf {
+    if [ -z "$1" ]; then
+        echo "usage: deck2pdf <url> [output.pdf] [size=1280x720]" >&2
+        return 1
+    fi
+    local url="$1"
+    local out="${2:-$(basename "${url%/}").pdf}"
+    local size="${3:-1280x720}"
+    npx --yes decktape reveal "$url" "$out" --size "$size" --load-pause 800
 }
 
 # Load local/org-specific functions if available
