@@ -22,6 +22,8 @@ set -euo pipefail
 MUTIRAO_HOME="${MUTIRAO_HOME:-$HOME/.mutirao}"
 RUNS_DIR="$MUTIRAO_HOME/runs"
 NOTES_VAULT="${NOTES_VAULT:-$HOME/.notes}"
+# caminho absoluto deste script (pro tmux reinvocar `mutirao _control` dentro do pane)
+SELF="$(command -v "$0" 2>/dev/null || echo "$0")"
 
 # ── helpers ────────────────────────────────────────────────────────────────
 err()  { printf '\033[31m✗ %s\033[0m\n' "$*" >&2; }
@@ -36,17 +38,18 @@ extract_json() {
   awk '/^```json/{f=1;next} /^```/{if(f)exit} f' "$1"
 }
 
-# ── run ──────────────────────────────────────────────────────────────────────
+# ── run (dispatcher: modo visual com auto-attach, ou foreground com --no-attach) ─
 cmd_run() {
   need jq; need tmux; need git
 
-  local pauta="" simulate=0 assume_yes=0 only_afk=0 force_branches=0 max_parallel=4
+  local pauta="" simulate=0 assume_yes=0 only_afk=0 force_branches=0 max_parallel=4 no_attach=0
   while [ $# -gt 0 ]; do
     case "$1" in
       --simulate) simulate=1 ;;
       --yes|-y)   assume_yes=1 ;;
       --only-afk) only_afk=1 ;;
       --force-branches) force_branches=1 ;;
+      --no-attach) no_attach=1 ;;
       --max-parallel) shift; max_parallel="${1:-4}" ;;
       --max-parallel=*) max_parallel="${1#*=}" ;;
       -*) die "flag desconhecida: $1" ;;
@@ -55,7 +58,7 @@ cmd_run() {
     shift
   done
   [[ "$max_parallel" =~ ^[1-9][0-9]*$ ]] || die "--max-parallel deve ser inteiro > 0"
-  [ -n "$pauta" ] || die "uso: mutirao run <pauta.md> [--simulate] [--yes] [--only-afk] [--force-branches] [--max-parallel N]"
+  [ -n "$pauta" ] || die "uso: mutirao run <pauta.md> [--simulate] [--yes] [--only-afk] [--force-branches] [--max-parallel N] [--no-attach]"
   [ -f "$pauta" ] || die "pauta não encontrada: $pauta"
 
   local json; json="$(extract_json "$pauta")"
@@ -69,28 +72,118 @@ cmd_run() {
   mkdir -p "$run_dir"
   echo "$json" > "$run_dir/pauta.json"
   printf '%s\n' "$pauta" > "$run_dir/pauta.source"
+  # config lida pelo cmd_control (que pode rodar noutro processo, dentro do pane)
+  cat > "$run_dir/run.conf" <<CONF
+simulate=$simulate
+assume_yes=$assume_yes
+only_afk=$only_afk
+force_branches=$force_branches
+max_parallel=$max_parallel
+CONF
 
-  info "run_id: $run_id"
-  info "runtime: $run_dir"
-  [ "$simulate" -eq 1 ] && info "modo: SIMULATE (mão dummy, sem claude)" || info "modo: claude -p headless"
+  _launch "$run_dir" "$no_attach" ""
+}
 
-  # levas presentes, em ordem crescente
+# ── resume: retoma um run pausado, pulando as levas já concluídas ──────────────
+cmd_resume() {
+  need jq; need tmux; need git
+  local run_id="" no_attach=0
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --no-attach) no_attach=1 ;;
+      -*) die "flag desconhecida: $1" ;;
+      *)  run_id="$1" ;;
+    esac; shift
+  done
+  [ -n "$run_id" ] || die "uso: mutirao resume <run_id> [--no-attach]"
+  local run_dir="$RUNS_DIR/$run_id"
+  [ -f "$run_dir/pauta.json" ] || die "run não encontrado (ou sem pauta.json): $run_id"
+  tmux kill-session -t "mutirao-$run_id" 2>/dev/null || true   # recriaremos a sessão
+  info "retomando $run_id — levas já concluídas serão puladas"
+  _launch "$run_dir" "$no_attach" "--resume"
+}
+
+# Sobe o control: foreground (--no-attach/sem TTY) ou pane de controle + attach.
+# resume_flag = "" ou "--resume".
+_launch() {
+  local run_dir="$1" no_attach="$2" resume_flag="${3:-}"
+  local run_id; run_id="$(basename "$run_dir")"
+  local session="mutirao-$run_id"
+  # sem TTY (tool/CI) força foreground — não dá pra attachar nem prompt interativo
+  [ -t 0 ] && [ -t 1 ] || no_attach=1
+  if [ "$no_attach" -eq 1 ]; then
+    cmd_control "$run_dir" --foreground $resume_flag
+  else
+    tmux new-session -d -s "$session" -n "mutirao" "exec '$SELF' _control '$run_dir' --in-pane $resume_flag" \
+      || die "falha ao criar sessão tmux $session"
+    tmux set-option -t "$session" mouse on >/dev/null 2>&1 || true
+    info "abrindo o mutirão no tmux ($session) — Ctrl-b d pra sair sem matar; mutirao clean $run_id pra limpar"
+    sleep 1
+    if [ -n "${TMUX:-}" ]; then
+      info "(já dentro do tmux: trocando de sessão; prefixo + L volta pra anterior)"
+      tmux switch-client -t "$session"
+    else
+      exec tmux attach -t "$session"
+    fi
+  fi
+}
+
+# ── control: o loop de levas. Roda em foreground (--foreground) OU dentro do
+#    pane de controle (--in-pane). As mãos sempre splitam na janela "mutirao".
+cmd_control() {
+  need jq; need tmux; need git
+  local run_dir="$1"; shift || true
+  local in_pane=0 resume=0
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --in-pane) in_pane=1 ;;
+      --resume)  resume=1 ;;
+      --foreground) ;;
+    esac; shift
+  done
+  [ -f "$run_dir/pauta.json" ] || die "run_dir inválido: $run_dir"
+
+  local simulate=0 assume_yes=0 only_afk=0 force_branches=0 max_parallel=4
+  # shellcheck disable=SC1090
+  [ -f "$run_dir/run.conf" ] && . "$run_dir/run.conf"
+  local json; json="$(cat "$run_dir/pauta.json")"
+  local run_id; run_id="$(basename "$run_dir")"
+  local run_name; run_name="$(echo "$json" | jq -r '.run // "mutirao"')"
+  local session="mutirao-$run_id"
   local levas; levas="$(echo "$json" | jq -r '[.maos[].leva] | unique | sort | .[]')"
   [ -n "$levas" ] || die "pauta sem mãos/levas"
 
-  tmux new-session -d -s "$session" -n "tmp" 2>/dev/null || die "falha ao criar sessão tmux $session"
-  ok "sessão tmux criada: $session  (observe com: tmux attach -t $session)"
+  # no modo visual, o próprio pane de controle fica retido ao fim (mostra o resumo
+  # em vez de fechar). As mãos já usam remain-on-exit por pane.
+  [ "$in_pane" -eq 1 ] && { tmux set-option -p remain-on-exit on >/dev/null 2>&1 || true; }
 
-  local total_fail=0
-  local init_window_used=0
+  info "run_id: $run_id"
+  [ "$simulate" -eq 1 ] && info "modo: SIMULATE (mão dummy, sem claude)" || info "modo: claude -p headless"
+
+  # alvo das mãos = janela "mutirao". Em --in-pane ela já existe (pane 0 = controle);
+  # em foreground criamos a sessão detached só pros panes das mãos.
+  local first_pane_free=0
+  if [ "$in_pane" -eq 0 ]; then
+    tmux new-session -d -s "$session" -n "mutirao" 2>/dev/null || die "falha ao criar sessão tmux $session"
+    first_pane_free=1
+    info "sessão tmux: $session (observe com: tmux attach -t $session)"
+  fi
+
+  # bordas com título por pane (mostra qual mão roda em cada um) + nome da janela
+  tmux set-option -w -t "$session:mutirao" pane-border-status top  >/dev/null 2>&1 || true
+  tmux set-option -w -t "$session:mutirao" pane-border-format \
+    " #{?pane_dead,✗ ,●} #{pane_title} #{?pane_dead,(exit #{pane_dead_status}),} " >/dev/null 2>&1 || true
+  # NÃO renomear a janela: o resto do código a referencia por "$session:mutirao".
+  [ "$in_pane" -eq 1 ] && { tmux select-pane -T "CONTROLE · $run_name (levas/aprovação aqui)" >/dev/null 2>&1 || true; }
+
   for leva in $levas; do
-    echo
-    info "═══ Leva $leva ═══"
+    echo; info "═══ Leva $leva ═══"
     local ids; ids="$(echo "$json" | jq -r --argjson l "$leva" '.maos[] | select(.leva==$l) | .id')"
 
-    # 1) resolve skips (HITL / --only-afk) agora; sobra a lista de runnable
+    # skips (HITL / --only-afk) + já-concluídas (resume)
     local runnable=()
     for id in $ids; do
+      if [ "$resume" -eq 1 ] && [ -f "$run_dir/$id.exit" ]; then continue; fi  # já processada num run anterior
       local a t; a="$(echo "$json" | jq -r --argjson i "$id" '.maos[]|select(.id==$i)|.autonomy // "AFK"')"
       t="$(echo "$json" | jq -r --argjson i "$id" '.maos[]|select(.id==$i)|.title')"
       if [ "$only_afk" -eq 1 ] && [ "$a" != "AFK" ]; then
@@ -102,24 +195,26 @@ cmd_run() {
       runnable+=("$id")
     done
 
-    local launched=()
-    if [ "${#runnable[@]}" -eq 0 ]; then info "  (nenhuma mão a lançar nesta leva)"; continue; fi
+    local launched=() leva_panes=()
+    if [ "${#runnable[@]}" -eq 0 ]; then
+      [ "$resume" -eq 1 ] && info "  ✓ leva $leva já concluída (resume) — pulando" || info "  (nenhuma mão a lançar nesta leva)"
+      continue
+    fi
     [ "${#runnable[@]}" -gt "$max_parallel" ] && info "  ${#runnable[@]} mãos, cap de concorrência=$max_parallel → em batches"
 
-    # 2) processa em batches de max_parallel (throttle de concorrência)
-    local batch_num=0 idx=0
+    local idx=0 batch_num=0
     while [ "$idx" -lt "${#runnable[@]}" ]; do
       batch_num=$((batch_num+1))
       local batch=( "${runnable[@]:$idx:$max_parallel}" )
       idx=$((idx+max_parallel))
-      local win="leva-$leva"; [ "$batch_num" -gt 1 ] && win="leva-$leva-b$batch_num"
-      local win_ready=0 batch_launched=()
+      local batch_launched=()
 
       for id in "${batch[@]}"; do
         local m; m="$(echo "$json" | jq -c --argjson i "$id" '.maos[]|select(.id==$i)')"
-        local autonomy repo_key repo_path branch prompt title
+        local autonomy repo_key repo_path branch prompt title linear
         autonomy="$(echo "$m" | jq -r '.autonomy // "AFK"')"
         title="$(echo "$m" | jq -r '.title')"
+        linear="$(echo "$m" | jq -r '.linear // "—"')"
         repo_key="$(echo "$m" | jq -r '.repo')"
         repo_path="$(echo "$json" | jq -r --arg k "$repo_key" '.repos[$k] // empty')"
         branch="$(echo "$m" | jq -r '.branch')"
@@ -128,31 +223,39 @@ cmd_run() {
         [ -n "$repo_path" ] || { err "  mão $id: repo '$repo_key' sem path em .repos"; echo "97" > "$run_dir/$id.exit"; continue; }
         [ -d "$repo_path/.git" ] || { err "  mão $id: '$repo_path' não é git repo"; echo "96" > "$run_dir/$id.exit"; continue; }
 
-        # branch collision: por padrão erra; --force-branches recria (-B)
+        # branch: em --simulate usa nome descartável (não polui o namespace real)
+        local use_branch="$branch"
+        [ "$simulate" -eq 1 ] && use_branch="mutirao-sim/$run_id/mao-$id"
         local wt="$run_dir/mao-$id" wt_flag="-b"
-        if git -C "$repo_path" show-ref --verify --quiet "refs/heads/$branch"; then
+        if git -C "$repo_path" show-ref --verify --quiet "refs/heads/$use_branch"; then
           if [ "$force_branches" -eq 1 ]; then wt_flag="-B"; else
-            err "  mão $id: branch '$branch' já existe — use --force-branches ou limpe antes"; echo "95" > "$run_dir/$id.exit"; continue
+            err "  mão $id: branch '$use_branch' já existe — use --force-branches ou limpe antes"; echo "95" > "$run_dir/$id.exit"; continue
           fi
         fi
-        git -C "$repo_path" worktree add -q "$wt" $wt_flag "$branch" 2>/dev/null \
-          || { err "  mão $id: falha no worktree ($branch)"; echo "94" > "$run_dir/$id.exit"; continue; }
+        git -C "$repo_path" worktree add -q "$wt" $wt_flag "$use_branch" 2>/dev/null \
+          || { err "  mão $id: falha no worktree ($use_branch)"; echo "94" > "$run_dir/$id.exit"; continue; }
+        printf '%s\t%s\n' "$repo_path" "$use_branch" > "$run_dir/$id.branch"
 
         printf '%s' "$prompt" > "$run_dir/$id.prompt"
         build_mao_script "$run_dir" "$id" "$wt" "$simulate"
         local pane_cmd="bash '$run_dir/$id.sh' 2>&1 | tee '$run_dir/$id.log'"
-        # Janela fresca por batch: send-keys sempre acerta um shell vivo.
-        if [ "$win_ready" -eq 0 ]; then
-          if [ "$init_window_used" -eq 0 ]; then tmux rename-window -t "$session:tmp" "$win"; init_window_used=1
-          else tmux new-window -t "$session" -n "$win"; fi
-          win_ready=1
+
+        local pid=""
+        if [ "$first_pane_free" -eq 1 ]; then
+          # foreground: reusa o pane 0 vazio da sessão pra 1ª mão (shell vivo → send-keys)
+          pid="$(tmux list-panes -t "$session:mutirao" -F '#{pane_id}' | head -1)"
+          tmux send-keys -t "$pid" "$pane_cmd" Enter
+          first_pane_free=0
         else
-          tmux split-window -t "$session:$win"; tmux select-layout -t "$session:$win" tiled >/dev/null
+          # demais (e todas no modo visual): split com o comando direto; remain-on-exit
+          # mantém o pane visível após terminar (matamos no fim da leva, no modo visual)
+          pid="$(tmux split-window -P -F '#{pane_id}' -t "$session:mutirao" "$pane_cmd" 2>/dev/null)"
+          tmux set-option -p -t "$pid" remain-on-exit on >/dev/null 2>&1 || true
+          tmux select-layout -t "$session:mutirao" tiled >/dev/null 2>&1 || true
         fi
-        tmux send-keys -t "$session:$win" "$pane_cmd" Enter
-        tmux select-pane -t "$session:$win" -T "mão-$id" >/dev/null 2>&1 || true
-        batch_launched+=("$id"); launched+=("$id")
-        ok "  mão $id [$autonomy] lançada → $branch  ($title)"
+        tmux select-pane -t "$pid" -T "mão $id · L$leva · $autonomy · $linear · $title" >/dev/null 2>&1 || true
+        batch_launched+=("$id"); launched+=("$id"); leva_panes+=("$pid")
+        ok "  mão $id [$autonomy] lançada → $use_branch  ($title)"
       done
 
       # espera o batch fechar antes do próximo (cap de concorrência real)
@@ -171,42 +274,42 @@ cmd_run() {
     local setup_fail=$(( ${#runnable[@]} - ${#launched[@]} ))
     if [ "$setup_fail" -gt 0 ]; then
       err "  leva $leva: $setup_fail mão(s) não lançada(s) por falha de setup. Parando para inspeção."
-      err "  runtime em $run_dir"
-      exit 1
+      err "  runtime em $run_dir"; _control_footer "$in_pane" "$run_id"; return 1
     fi
-    if [ "${#launched[@]}" -eq 0 ]; then info "  (nenhuma mão a lançar)"; continue; fi
+    [ "${#launched[@]}" -eq 0 ] && continue
 
-    # resumo da leva (mãos lançadas)
-    echo
-    info "  ── resultado da leva $leva ──"
+    echo; info "  ── resultado da leva $leva ──"
     local leva_fail=0
     for id in "${launched[@]}"; do
       local code; code="$(cat "$run_dir/$id.exit" 2>/dev/null || echo "?")"
       if [ "$code" = "0" ]; then ok "    mão $id: OK"; else err "    mão $id: exit=$code (log: $run_dir/$id.log)"; leva_fail=$((leva_fail+1)); fi
     done
-    total_fail=$((total_fail+leva_fail))
-
     if [ "$leva_fail" -ne 0 ]; then
-      err "  leva $leva teve $leva_fail falha(s). Parando para inspeção."
-      err "  worktrees preservados em $run_dir. tmux: tmux attach -t $session"
-      exit 1
+      err "  leva $leva teve $leva_fail falha(s). Parando para inspeção (worktrees preservados em $run_dir)."
+      _control_footer "$in_pane" "$run_id"; return 1
     fi
 
-    # pausa + aprovação antes da próxima leva
+    # aprovação antes da próxima leva
     local is_last; is_last="$(echo "$levas" | tail -1)"
     if [ "$leva" != "$is_last" ]; then
-      if [ "$assume_yes" -eq 1 ]; then
-        info "  --yes: liberando próxima leva automaticamente"
+      if [ "$assume_yes" -eq 1 ]; then info "  --yes: liberando próxima leva automaticamente"
       else
-        printf '\033[33m? Liberar a próxima leva? [y/N] \033[0m'
-        read -r ans
-        case "$ans" in y|Y|s|S) ;; *) info "  pausado pelo usuário. Retome depois; runtime em $run_dir"; exit 0 ;; esac
+        info "  (pra pausar e continuar DEPOIS: prefixo + d agora pra destacar, e responda 'y' ao reattachar)"
+        printf '\033[33m? Liberar a próxima leva agora? [y = sim · N = encerrar este run] \033[0m'; read -r ans || ans=""
+        case "$ans" in
+          y|Y|s|S) ;;
+          *) echo; info "ENCERRADO na leva $leva. Levas até aqui concluídas; as próximas NÃO foram lançadas."
+             info "Worktrees e branches preservados em $run_dir."
+             info "Pra retomar da próxima leva quando quiser:  mutirao resume $run_id"
+             _control_footer "$in_pane" "$run_id"; return 0 ;;
+        esac
       fi
+      # modo visual: limpa os panes da leva concluída pra próxima leva entrar limpa
+      if [ "$in_pane" -eq 1 ]; then for p in "${leva_panes[@]}"; do tmux kill-pane -t "$p" 2>/dev/null || true; done; fi
     fi
   done
 
   echo
-  # tally final escaneando todos os .exit reais (ok / pulada / falha)
   local n_ok=0 n_skip=0 n_fail=0
   for f in "$run_dir"/*.exit; do
     [ -e "$f" ] || continue
@@ -215,7 +318,17 @@ cmd_run() {
   if [ "$n_fail" -eq 0 ]; then ok "mutirão concluído: $n_ok OK, $n_skip pulada(s) ($run_id)"
   else err "mutirão concluído com $n_fail falha(s), $n_ok OK, $n_skip pulada(s) ($run_id)"; fi
   write_result_note "$run_dir" "$run_id" "$json" "$n_ok" "$n_skip" "$n_fail"
-  info "worktrees em $run_dir | sessão tmux: $session (mate com: mutirao clean $run_id)"
+  info "worktrees em $run_dir"
+  _control_footer "$in_pane" "$run_id"
+}
+
+# No modo visual, imprime o rodapé de saída. O pane fica retido (remain-on-exit),
+# então não fecha sozinho — você lê o resumo e sai/limpa quando quiser.
+_control_footer() {
+  [ "${1:-0}" -eq 1 ] || return 0
+  echo
+  printf '\033[36m▸ Este pane fica aberto (não fecha sozinho).\033[0m\n'
+  printf '\033[36m  • voltar pra sua sessão: prefixo + d   • limpar tudo: mutirao clean %s\033[0m\n' "$2"
 }
 
 # Grava nota de resultado no 0-inbox do vault (pending_organize → /organize adota).
@@ -326,8 +439,17 @@ cmd_status() {
 
 # ── clean ─────────────────────────────────────────────────────────────────────
 cmd_clean() {
-  local target="${1:-}"
-  [ -n "$target" ] || die "uso: mutirao clean <run_id>|--all"
+  local target="" keep_branches=0
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --keep-branches) keep_branches=1 ;;
+      --all) target="--all" ;;
+      -*) die "flag desconhecida: $1" ;;
+      *) target="$1" ;;
+    esac
+    shift
+  done
+  [ -n "$target" ] || die "uso: mutirao clean <run_id>|--all [--keep-branches]"
   local runs=()
   if [ "$target" = "--all" ]; then
     [ -d "$RUNS_DIR" ] && while read -r r; do runs+=("$r"); done < <(ls -1 "$RUNS_DIR" 2>/dev/null)
@@ -348,6 +470,15 @@ cmd_clean() {
         rm -rf "$wt"
       fi
     done
+    # deleta as branches que o run criou (registradas em *.branch); só depois dos worktrees
+    if [ "$keep_branches" -eq 0 ]; then
+      for bf in "$run_dir"/*.branch; do
+        [ -e "$bf" ] || continue
+        local rp br; IFS=$'\t' read -r rp br < "$bf"
+        [ -n "$rp" ] && [ -n "$br" ] || continue
+        if git -C "$rp" branch -D "$br" >/dev/null 2>&1; then echo "    branch deletada: $br"; fi
+      done
+    fi
     tmux kill-session -t "mutirao-$run_id" 2>/dev/null || true
     rm -rf "$run_dir"
     ok "limpo: $run_id"
@@ -358,20 +489,27 @@ cmd_clean() {
 main() {
   local sub="${1:-}"; shift || true
   case "$sub" in
-    run)    cmd_run "$@" ;;
-    status) cmd_status "$@" ;;
-    clean)  cmd_clean "$@" ;;
+    run)      cmd_run "$@" ;;
+    resume)   cmd_resume "$@" ;;
+    _control) cmd_control "$@" ;;
+    status)   cmd_status "$@" ;;
+    clean)    cmd_clean "$@" ;;
     ""|-h|--help)
       cat <<EOF
 mutirao — orquestrador de tasks em paralelo (tmux + git worktrees)
 
-  mutirao run <pauta.md> [--simulate] [--yes] [--only-afk] [--force-branches] [--max-parallel N]
-      Executa a pauta em levas. --simulate usa mão dummy (sem claude).
-      --yes pula a aprovação entre levas. --only-afk ignora mãos HITL.
-      --force-branches recria branches existentes (-B). --max-parallel N
-      limita quantas mãos rodam ao mesmo tempo por leva (default 4).
-  mutirao status [<run_id>]    Lista runs ou detalha uma.
-  mutirao clean  <run_id>|--all   Remove worktrees, sessão tmux e runtime.
+  mutirao run <pauta.md> [--simulate] [--yes] [--only-afk] [--force-branches] [--max-parallel N] [--no-attach]
+      Executa a pauta em levas. Por padrão abre um pane de controle + panes das
+      mãos no tmux e te attacha (visual). --no-attach roda em foreground (sem
+      attach), e é forçado quando não há TTY (scripts/CI).
+      --simulate usa mão dummy (sem claude). --yes pula a aprovação entre levas.
+      --only-afk ignora mãos HITL. --force-branches recria branches (-B).
+      --max-parallel N limita mãos simultâneas por leva (default 4).
+  mutirao resume <run_id> [--no-attach]
+      Retoma um run encerrado/pausado, pulando as levas já concluídas e
+      continuando da próxima leva pendente.
+  mutirao status [<run_id>]            Lista runs ou detalha uma.
+  mutirao clean  <run_id>|--all [--keep-branches]   Remove worktrees, branches, tmux e runtime.
 EOF
       ;;
     *) die "subcomando desconhecido: $sub (veja: mutirao --help)" ;;
