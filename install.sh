@@ -74,9 +74,11 @@ link "$REPO/claude/statusline-command-v2.sh"   "$CLAUDE_DIR/statusline-command-v
 link "$REPO/claude/statusline-command-v3.sh"   "$CLAUDE_DIR/statusline-command-v3.sh"
 
 echo
-echo "[bin/]"
-for f in atlas-sync atlas-snapshot ccstatusline; do
-  link "$REPO/claude/bin/$f" "$CLAUDE_DIR/bin/$f"
+echo "[bin/ — file-by-file (todo script novo entra automaticamente)]"
+for src in "$REPO/claude/bin"/*; do
+  [ -f "$src" ] || continue
+  base=$(basename "$src")
+  link "$src" "$CLAUDE_DIR/bin/$base"
 done
 
 echo
