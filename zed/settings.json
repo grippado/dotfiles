@@ -28,6 +28,21 @@
     "prisma": true,
     "angular": true
   },
+  // Detecção de linguagem para dotfiles sem extensão/shebang.
+  // A chave tem que bater com o nome da linguagem no Zed: "Shell Script".
+  "file_types": {
+    "Shell Script": [
+      ".zsh*",
+      ".bash*",
+      ".profile",
+      ".aliases",
+      ".functions",
+      ".secrets",
+      ".env",
+      ".env.*",
+      "*.zsh_*"
+    ]
+  },
   "git_panel": {
     "dock": "left"
   },
