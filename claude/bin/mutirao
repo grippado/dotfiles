@@ -254,7 +254,9 @@ cmd_control() {
           tmux set-option -p -t "$pid" remain-on-exit on >/dev/null 2>&1 || true
           tmux select-layout -t "$session:mutirao" tiled >/dev/null 2>&1 || true
         fi
-        tmux select-pane -t "$pid" -T "mão $id · L$leva · $autonomy · $linear · $title" >/dev/null 2>&1 || true
+        local label="mão $id · L$leva · $autonomy · $linear · $title"
+        printf '%s' "$label" > "$run_dir/$id.label"   # o stream-fmt.sh lê pra compor o título com métricas
+        tmux select-pane -t "$pid" -T "$label" >/dev/null 2>&1 || true
         batch_launched+=("$id"); launched+=("$id"); leva_panes+=("$pid")
         ok "  mão $id [$autonomy] lançada → $use_branch  ($title)"
       done
@@ -404,7 +406,7 @@ SIM
       cat <<REAL
 claude -p "\$(cat '$run_dir/$id.prompt')" --output-format stream-json --verbose --dangerously-skip-permissions 2>"$run_dir/$id.err" \\
   | tee "$run_dir/$id.raw.jsonl" \\
-  | jq -rj --unbuffered -f "$run_dir/stream-fmt.jq" 2>/dev/null
+  | bash "$run_dir/stream-fmt.sh" "$run_dir" "$id"
 code=\${PIPESTATUS[0]}
 REAL
     fi
@@ -427,6 +429,30 @@ elif .type=="assistant" then
 elif .type=="result" then "\n[32m✓ FIM ("+(.subtype//"?")+(if .total_cost_usd then (", $"+((.total_cost_usd*1000|round)/1000|tostring)) else "" end)+")[0m\n"
 else empty end
 JQ
+
+  # wrapper: imprime as linhas legíveis (stream-fmt.jq) E atualiza o título do pane
+  # (borda) com métricas ao vivo, estilo ccstatusline: modelo · contexto · output · turnos.
+  cat > "$1/stream-fmt.sh" <<'SH'
+#!/usr/bin/env bash
+RD="$1"; ID="$2"
+FMT="$RD/stream-fmt.jq"
+LABEL="$(cat "$RD/$ID.label" 2>/dev/null || echo "mão $ID")"
+PANE="${TMUX_PANE:-}"
+model="?"; out=0; turns=0; ctx=0
+settitle(){ [ -n "$PANE" ] && tmux select-pane -t "$PANE" -T "$1" >/dev/null 2>&1 || true; }
+while IFS= read -r line; do
+  [ -n "$line" ] || continue
+  printf '%s\n' "$line" | jq -rj --unbuffered -f "$FMT" 2>/dev/null
+  # campo model vira "-" quando ausente (tab é IFS-whitespace; campo vazio colapsaria e desalinharia)
+  IFS=$'\t' read -r typ m it ot ca _co < <(printf '%s' "$line" | jq -rc '[(.type//"-"),(.model//"-"),((.message.usage.input_tokens)//0),((.message.usage.output_tokens)//0),(((.message.usage.cache_read_input_tokens)//0)+((.message.usage.cache_creation_input_tokens)//0)),((.total_cost_usd)//0)]|@tsv' 2>/dev/null)
+  case "$typ" in
+    system)    [ -n "$m" ] && [ "$m" != "-" ] && [ "$m" != "null" ] && model="${m#claude-}" ;;
+    assistant) ctx=$(( (${it:-0} + ${ca:-0}) / 1000 )); out=$(( out + ${ot:-0} )); turns=$(( turns + 1 ))
+               settitle "${model} · ${ctx}k ctx · ${out} out · t${turns} │ ${LABEL}" ;;
+    result)    c=$(printf '%.2f' "${_co:-0}" 2>/dev/null || echo "${_co:-0}"); settitle "✓ ${model} · ${out} out · \$${c} │ ${LABEL}" ;;
+  esac
+done
+SH
 }
 
 # ── status ────────────────────────────────────────────────────────────────────
