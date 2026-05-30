@@ -110,10 +110,16 @@ Perguntar: "Aplicar plano? (sim / ajustes / só parcial)". Se o usuário passou 
 
 Gravar `6-audits/YYYY-MM-DD-HHMM-organize-run.md` com:
 
+> **Proveniência (capturar antes de agir):** `machine` = `$DOTFILES_AI_MACHINE` (`personal`|`arco`, máquina lógica do dotfiles-ai; `"desconhecida"` se não setada), `hostname` = `hostname -s` (host físico), `cwd` = `$PWD` da invocação (de onde o `/organize` foi disparado, não o `$NOTES_VAULT`), `invocation` = comando + flags que originaram o run (ex.: `/organize --apply`; ou `"proativo (sem comando explícito)"` se via skill).
+
 ```markdown
 ---
 date: "YYYY-MM-DD"
 time: "HH:MM"
+machine: "<$DOTFILES_AI_MACHINE>"
+hostname: "<hostname -s>"
+cwd: "<PWD da invocação>"
+invocation: "/organize <args>"
 tags: [audit, organize, run]
 parent: "[[_index]]"
 ---
