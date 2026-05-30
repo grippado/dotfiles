@@ -94,16 +94,11 @@ for src in "$REPO/claude/commands"/*.md; do
 done
 
 echo
-echo "[agents/ — file-by-file + categories]"
+echo "[agents/ — file-by-file]"
 for src in "$REPO/claude/agents"/*.md; do
   [ -f "$src" ] || continue
   base=$(basename "$src")
   link "$src" "$CLAUDE_DIR/agents/$base"
-done
-for d in bonus design engineering marketing product project-management studio-operations testing; do
-  if [ -d "$REPO/claude/agents/$d" ]; then
-    link "$REPO/claude/agents/$d" "$CLAUDE_DIR/agents/$d"
-  fi
 done
 
 echo

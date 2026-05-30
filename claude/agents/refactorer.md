@@ -1,6 +1,6 @@
 ---
 name: refactorer
-description: Analyzes code for refactoring opportunities and applies improvements. Use when code needs cleanup, simplification, or restructuring without changing behavior.
+description: Applies refactorings to code — cleanup, simplification, restructuring — without changing behavior. Use when you already know what to improve and want it executed. For read-only analysis of what to refactor, use refactor-scout instead.
 model: sonnet
 tools:
   - Read
