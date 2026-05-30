@@ -113,18 +113,36 @@ server.registerTool(
   {
     title: "Criar nota",
     description:
-      "Cria uma nova nota no vault. Por padrão grava em '0-inbox/' (fluxo de captura — o /organize processa depois). Recusa sobrescrever notas existentes.",
+      "Cria uma nova nota no vault. Por padrão grava em '0-inbox/' já com frontmatter organize-ready (pending_organize: true) para o /organize processar e arquivar depois. " +
+      "SEMPRE informe suggestedContext e suggestedSubtype quando criar no inbox, para o /organize saber pra onde mover a nota. Recusa sobrescrever notas existentes.",
     inputSchema: {
       title: z.string().describe("Título da nota."),
       content: z.string().describe("Conteúdo em markdown (sem precisar repetir o título)."),
       folder: z.string().optional().describe("Pasta destino (padrão: '0-inbox')."),
       filename: z.string().optional().describe("Nome do arquivo (padrão: derivado do título)."),
+      suggestedContext: z
+        .enum(["arco", "flagbridge", "opengateway", "vozes", "pessoal", "isaac", "dotfiles-ai"])
+        .optional()
+        .describe("Contexto sugerido para o /organize rotear a nota (notas no inbox)."),
+      suggestedSubtype: z
+        .enum(["decision", "bug-hunt", "refactor", "exploration", "session", "analysis"])
+        .optional()
+        .describe("Subtipo que define a subpasta destino (padrão: exploration)."),
+      tags: z.array(z.string()).optional().describe("Tags do frontmatter (ASCII, sem acento)."),
     },
   },
-  async ({ title, content, folder, filename }) => {
+  async ({ title, content, folder, filename, suggestedContext, suggestedSubtype, tags }) => {
     await ensureReady();
     try {
-      const rel = await store.createNote({ title, content, folder, filename });
+      const rel = await store.createNote({
+        title,
+        content,
+        folder,
+        filename,
+        suggestedContext,
+        suggestedSubtype,
+        tags,
+      });
       return text(`Nota criada: ${rel}`);
     } catch (e) {
       return text(`Erro ao criar nota: ${String(e)}`);

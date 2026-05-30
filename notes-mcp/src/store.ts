@@ -292,11 +292,38 @@ export class Store {
     this.saveCache();
   }
 
+  /**
+   * Monta o frontmatter "organize-ready" que a Frente 1.0 do /organize consome.
+   * pending_organize é booleano (sem aspas) de propósito — é o gatilho exato do grep.
+   */
+  private buildInboxFrontmatter(opts: {
+    tags?: string[];
+    suggestedContext?: string;
+    suggestedSubtype?: string;
+  }): string {
+    const d = new Date();
+    const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+      d.getDate()
+    ).padStart(2, "0")}`;
+    const tags = [...(opts.tags ?? [])];
+    if (!tags.includes("pending-organize")) tags.push("pending-organize");
+    const lines = ["---", `date: "${date}"`, "tags:"];
+    for (const t of tags) lines.push(`  - ${t}`);
+    lines.push("pending_organize: true");
+    if (opts.suggestedContext) lines.push(`suggested_context: ${opts.suggestedContext}`);
+    lines.push(`suggested_subtype: ${opts.suggestedSubtype ?? "exploration"}`);
+    lines.push("---");
+    return lines.join("\n") + "\n";
+  }
+
   async createNote(opts: {
     title: string;
     content: string;
     folder?: string;
     filename?: string;
+    suggestedContext?: string;
+    suggestedSubtype?: string;
+    tags?: string[];
   }): Promise<string> {
     const folder = opts.folder ?? "0-inbox";
     const safeName =
@@ -312,9 +339,23 @@ export class Store {
       throw new Error(`Já existe uma nota em ${path.relative(this.vaultRoot, absPath)}`);
     }
     fs.mkdirSync(path.dirname(absPath), { recursive: true });
-    const body = opts.content.startsWith("#") || opts.content.startsWith("---")
-      ? opts.content
-      : `# ${opts.title}\n\n${opts.content}\n`;
+
+    const isInbox = folder === "0-inbox" || folder.startsWith(`0-inbox${path.sep}`);
+    const hasOwnFrontmatter = opts.content.trimStart().startsWith("---");
+
+    let body: string;
+    if (hasOwnFrontmatter) {
+      // Caller já mandou frontmatter completo — respeitar.
+      body = opts.content;
+    } else {
+      const heading = opts.content.trimStart().startsWith("#")
+        ? opts.content
+        : `# ${opts.title}\n\n${opts.content}\n`;
+      // Notas no inbox ganham frontmatter organize-ready; notas colocadas
+      // deliberadamente em outro contexto não precisam de pending_organize.
+      body = isInbox ? this.buildInboxFrontmatter(opts) + "\n" + heading : heading;
+    }
+
     fs.writeFileSync(absPath, body, "utf8");
     await this.upsert(absPath);
     return path.relative(this.vaultRoot, absPath);
