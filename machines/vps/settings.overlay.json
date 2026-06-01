@@ -1,0 +1,3 @@
+{
+  "_doc": "VPS overlay — headless service node. No machine-level overrides; uses settings.base.json as-is. Present only because merge-settings.sh requires an overlay file per machine."
+}

@@ -5,6 +5,7 @@
 # Usage:
 #   ./install.sh --machine personal [--dry-run]
 #   ./install.sh --machine arco     [--dry-run]
+#   ./install.sh --machine vps      [--dry-run]
 
 set -euo pipefail
 
@@ -23,8 +24,8 @@ done
 
 [ -n "$MACHINE" ] || MACHINE="${DOTFILES_AI_MACHINE:-}"
 case "$MACHINE" in
-  personal|arco) ;;
-  *) echo "ERROR: --machine must be 'personal' or 'arco' (got: '$MACHINE')" >&2; exit 1 ;;
+  personal|arco|vps) ;;
+  *) echo "ERROR: --machine must be 'personal', 'arco' or 'vps' (got: '$MACHINE')" >&2; exit 1 ;;
 esac
 
 REPO="$(cd "$(dirname "$0")" && pwd)"
