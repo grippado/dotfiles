@@ -45,6 +45,17 @@
         ]
       }
     ],
+    "SessionEnd": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.dotfiles-ai/claude/hooks/claude-session-end.sh"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "*",
