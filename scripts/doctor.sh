@@ -29,7 +29,7 @@ done
 
 echo
 echo "[claude symlinks]"
-for f in CLAUDE.md ARCHITECTURE.md statusline-command-v2.sh REGISTRY.json bin/atlas-sync bin/atlas-snapshot bin/ccstatusline; do
+for f in CLAUDE.md ARCHITECTURE.md REGISTRY.json bin/atlas-sync bin/atlas-snapshot bin/ccstatusline; do
   target="$HOME/.claude/$f"
   if [ -L "$target" ]; then
     real=$(readlink "$target")

@@ -68,11 +68,11 @@ link() {
   echo "  → $dst → $src"
 }
 
-echo "[top-level docs & statusline]"
+echo "[top-level docs]"
 link "$REPO/claude/CLAUDE.md"                  "$CLAUDE_DIR/CLAUDE.md"
 link "$REPO/claude/ARCHITECTURE.md"            "$CLAUDE_DIR/ARCHITECTURE.md"
-link "$REPO/claude/statusline-command-v2.sh"   "$CLAUDE_DIR/statusline-command-v2.sh"
-link "$REPO/claude/statusline-command-v3.sh"   "$CLAUDE_DIR/statusline-command-v3.sh"
+# statusline ativo e bin/ccstatusline (linkado via [bin/] abaixo). As versoes
+# legadas v2/v3 nao existem mais na fonte (so v4, tambem inativa) — nao linkar.
 
 echo
 echo "[bin/ — file-by-file (todo script novo entra automaticamente)]"
