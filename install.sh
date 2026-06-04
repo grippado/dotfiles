@@ -29,7 +29,6 @@ fi
 # Make scripts executable
 chmod +x "$DFL/configs/secrets.sh"
 chmod +x "$DFL/installers/"*.sh
-chmod +x "$DFL/claude/install.sh" 2>/dev/null
 
 # ── Core Setup ───────────────────────────────────────────────
 source "$DFL/configs/git.sh"
@@ -87,9 +86,8 @@ LOCALEOF
 fi
 
 # ── Claude Code Configuration ────────────────────────────────
-if [ -f "$DFL/claude/install.sh" ]; then
-    source "$DFL/claude/install.sh"
-fi
+# Config do Claude Code e gerenciada por ~/.dotfiles-ai/install.sh (fonte da
+# verdade). Este repo nao escreve em ~/.claude.
 
 # ── Zed editor CLI (macOS) ───────────────────────────────────
 # Expoe `zed` / `zed .` no PATH, espelhando code/cursor.
