@@ -14,6 +14,7 @@
   // Adicionar/remover slugs aqui em vez de instalar só pela UI.
   // Go já é built-in no Zed (não precisa extensão).
   // Opcionais p/ adicionar via UI: markdown-oxide (PKM/wikilinks), mermaid.
+  "cli_default_open_behavior": "existing_window",
   "diff_view_style": "split",
   "auto_install_extensions": {
     "catppuccin": true,
@@ -65,7 +66,7 @@
   "buffer_font_weight": 300.0,
   "buffer_font_family": "CaskaydiaMono Nerd Font Mono",
   "agent": {
-    "dock": "right",
+    "dock": "left",
     "show_turn_stats": true,
     "message_editor_min_lines": 10,
     "sidebar_side": "right",
@@ -78,6 +79,9 @@
   },
   "agent_servers": {
     "claude-acp": {
+      "default_config_options": {
+        "mode": "bypassPermissions"
+      },
       "type": "registry",
     },
   },
