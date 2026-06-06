@@ -1,0 +1,259 @@
+#!/usr/bin/env bash
+#
+# ide-memory-harvest — ENTRYPOINT do harvester de memorias de IDEs/CLIs de IA.
+#
+# Orquestra os adapters em ~/.dotfiles-ai/bin/ide-adapters/<name>.sh, faz merge
+# do JSONL normalizado, deduplica contra historico (.seen-ids.txt) e emite em
+# stdout SOMENTE os itens novos. NAO avanca watermark por padrao.
+#
+# Contrato do item normalizado (uma linha JSON por item):
+#   { tool, item_id, title, summary, timestamp, cwd_hint, source_path, kind }
+#
+# Modos:
+#   (sem args)            le watermark, roda cada adapter com --since do tool,
+#                         merge + dedup, emite JSONL novo em stdout.
+#   --ide-deep           tambem roda o adapter claude-desktop.sh (caro: LevelDB).
+#   --since <YYYY-MM-DD>  override global (backfill); ignora watermark.
+#   --advance-watermark  le JSONL do stdin, atualiza .watermark.json (max ts por
+#                         tool) e adiciona os ids novos ao .seen-ids.txt.
+#
+# READ-ONLY nas fontes (responsabilidade dos adapters). O entrypoint so escreve
+# em ~/.notes/6-audits/ide-memories/ e somente no modo --advance-watermark.
+#
+set -uo pipefail
+
+# --- Paths ---------------------------------------------------------------
+ADAPTER_DIR="${IDE_ADAPTER_DIR:-$HOME/.dotfiles-ai/bin/ide-adapters}"
+STATE_DIR="${IDE_HARVEST_STATE_DIR:-$HOME/.notes/6-audits/ide-memories}"
+WATERMARK="$STATE_DIR/.watermark.json"
+SEEN_IDS="$STATE_DIR/.seen-ids.txt"
+
+# Adapters caros / opt-in: so rodam com a flag correspondente.
+DEEP_ADAPTERS=("claude-desktop")
+
+log() { printf '%s\n' "ide-memory-harvest: $*" >&2; }
+
+# --- Dependencias --------------------------------------------------------
+if ! command -v jq >/dev/null 2>&1; then
+  log "ERRO: jq nao encontrado no PATH. Abortando."
+  exit 0
+fi
+
+# --- Garante state dir + arquivos iniciais -------------------------------
+ensure_state() {
+  mkdir -p "$STATE_DIR" 2>/dev/null || true
+  [ -f "$WATERMARK" ] || printf '%s\n' '{}' >"$WATERMARK"
+  [ -f "$SEEN_IDS" ]  || : >"$SEEN_IDS"
+}
+
+# --- Helpers de tempo ----------------------------------------------------
+# Converte YYYY-MM-DD em epoch_ms (best effort, macOS BSD date e GNU date).
+date_to_epoch_ms() {
+  local d="$1" secs=""
+  # BSD date (macOS)
+  secs=$(date -j -f "%Y-%m-%d" "$d" "+%s" 2>/dev/null) || secs=""
+  if [ -z "$secs" ]; then
+    # GNU date
+    secs=$(date -d "$d" "+%s" 2>/dev/null) || secs=""
+  fi
+  [ -n "$secs" ] && printf '%s' "$((secs * 1000))"
+}
+
+# --- Parse de argumentos -------------------------------------------------
+MODE="harvest"          # harvest | advance
+INCLUDE_DEEP=0
+SINCE_OVERRIDE=""       # epoch_ms global (backfill) quando setado
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --ide-deep)
+      INCLUDE_DEEP=1
+      shift
+      ;;
+    --advance-watermark)
+      MODE="advance"
+      shift
+      ;;
+    --since)
+      shift
+      if [ $# -eq 0 ]; then
+        log "ERRO: --since requer <YYYY-MM-DD>."
+        exit 0
+      fi
+      SINCE_OVERRIDE="$(date_to_epoch_ms "$1")"
+      if [ -z "$SINCE_OVERRIDE" ]; then
+        log "ERRO: --since invalido ('$1'). Use YYYY-MM-DD."
+        exit 0
+      fi
+      shift
+      ;;
+    -h|--help)
+      sed -n '2,40p' "$0" | sed 's/^# \{0,1\}//' >&2
+      exit 0
+      ;;
+    *)
+      log "AVISO: argumento desconhecido ignorado: '$1'"
+      shift
+      ;;
+  esac
+done
+
+ensure_state
+
+# =========================================================================
+# MODO: --advance-watermark
+# Le JSONL do stdin, atualiza max timestamp por tool no .watermark.json e
+# faz append dos ids novos no .seen-ids.txt.
+# =========================================================================
+if [ "$MODE" = "advance" ]; then
+  tmp_in="$(mktemp "${TMPDIR:-/tmp}/ide-harvest-adv.XXXXXX")" || {
+    log "ERRO: nao consegui criar tmp para --advance-watermark."
+    exit 0
+  }
+  trap 'rm -f "$tmp_in"' EXIT
+  cat >"$tmp_in"
+
+  # 1) Atualiza watermark: max timestamp (numerico, melhor esforco) por tool.
+  #    Linhas sem timestamp numerico nao movem o watermark daquele tool.
+  updated_wm="$(
+    jq -c -n \
+      --slurpfile wm "$WATERMARK" \
+      --rawfile raw "$tmp_in" '
+      ($wm[0] // {}) as $base
+      | reduce ($raw | split("\n")[] | select(length > 0)) as $line ($base;
+          ($line | try fromjson catch null) as $it
+          | if ($it | type) == "object" and ($it.tool // "") != "" then
+              ($it.tool) as $t
+              | ($it.timestamp // "" | tostring) as $ts
+              | ($ts | try (tonumber) catch null) as $tsn
+              | if $tsn == null then .
+                else
+                  (.[$t] // null) as $cur
+                  | ($cur | try (tonumber) catch null) as $curn
+                  | if $curn == null or $tsn > $curn then .[$t] = $tsn else . end
+                end
+            else .
+            end
+        )
+      ' 2>/dev/null
+  )"
+
+  if [ -n "$updated_wm" ]; then
+    wm_new="$(mktemp "${TMPDIR:-/tmp}/ide-harvest-wm.XXXXXX")" || wm_new=""
+    if [ -n "$wm_new" ]; then
+      printf '%s\n' "$updated_wm" | jq '.' >"$wm_new" 2>/dev/null \
+        && mv "$wm_new" "$WATERMARK" \
+        || { rm -f "$wm_new"; log "AVISO: falha ao gravar watermark."; }
+    fi
+  else
+    log "AVISO: nao consegui computar watermark do stdin (mantido inalterado)."
+  fi
+
+  # 2) Append dos item_ids novos no .seen-ids.txt (dedup contra existentes).
+  new_ids="$(
+    jq -r 'select(type=="object") | .item_id // empty' "$tmp_in" 2>/dev/null \
+      | grep -v '^[[:space:]]*$' || true
+  )"
+  if [ -n "$new_ids" ]; then
+    # Mantem apenas ids que ainda nao estao no historico.
+    printf '%s\n' "$new_ids" \
+      | grep -vxF -f "$SEEN_IDS" 2>/dev/null \
+      | grep -v '^[[:space:]]*$' >>"$SEEN_IDS" || true
+  fi
+
+  exit 0
+fi
+
+# =========================================================================
+# MODO: harvest (default)
+# =========================================================================
+
+# Resolve a lista de adapters a rodar.
+shopt -s nullglob
+all_adapters=("$ADAPTER_DIR"/*.sh)
+shopt -u nullglob
+
+if [ "${#all_adapters[@]}" -eq 0 ]; then
+  log "nenhum adapter em $ADAPTER_DIR — nada a fazer."
+  exit 0
+fi
+
+is_deep() {
+  local name="$1" d
+  for d in "${DEEP_ADAPTERS[@]}"; do
+    [ "$name" = "$d" ] && return 0
+  done
+  return 1
+}
+
+# --since (epoch_ms) para um dado tool, a partir do watermark.
+# Se SINCE_OVERRIDE setado, ele vence (backfill global).
+since_for_tool() {
+  local tool="$1"
+  if [ -n "$SINCE_OVERRIDE" ]; then
+    printf '%s' "$SINCE_OVERRIDE"
+    return
+  fi
+  jq -r --arg t "$tool" '(.[$t] // "") | tostring' "$WATERMARK" 2>/dev/null \
+    | sed 's/^null$//'
+}
+
+# Acumula stdout de todos os adapters num tmp para depois deduplicar.
+merged="$(mktemp "${TMPDIR:-/tmp}/ide-harvest-merge.XXXXXX")" || {
+  log "ERRO: nao consegui criar tmp de merge."
+  exit 0
+}
+trap 'rm -f "$merged"' EXIT
+
+for adapter in "${all_adapters[@]}"; do
+  name="$(basename "$adapter" .sh)"
+
+  if is_deep "$name" && [ "$INCLUDE_DEEP" -ne 1 ]; then
+    log "pulando adapter caro '$name' (use --ide-deep para incluir)."
+    continue
+  fi
+
+  if [ ! -r "$adapter" ]; then
+    log "AVISO: adapter '$name' nao legivel — pulando."
+    continue
+  fi
+
+  since="$(since_for_tool "$name")"
+
+  # Guard: falha de um adapter nao derruba os outros. stdout vai pro merge,
+  # stderr ja vai direto pro stderr do harvester.
+  if ! bash "$adapter" --since "$since" >>"$merged" 2>>/dev/stderr; then
+    log "AVISO: adapter '$name' saiu com erro — continuando com os demais."
+  fi
+done
+
+# Dedup: emite apenas linhas JSON validas cujo item_id ainda NAO esta no
+# historico .seen-ids.txt e que sejam unicas dentro deste run.
+#
+# 1) normaliza para "ID<TAB>LINHA" (descarta linhas sem item_id valido)
+# 2) remove ids ja vistos (.seen-ids.txt)
+# 3) remove duplicatas de id dentro do run (mantem a primeira)
+# 4) emite somente a LINHA original
+jq -c -r 'select(type=="object") | select((.item_id // "") != "")
+          | [ .item_id, (.|tostring) ] | @tsv' "$merged" 2>/dev/null \
+  | awk -v seen="$SEEN_IDS" '
+      BEGIN {
+        while ((getline line < seen) > 0) {
+          gsub(/^[ \t]+|[ \t]+$/, "", line)
+          if (line != "") skip[line] = 1
+        }
+        close(seen)
+      }
+      {
+        tab = index($0, "\t")
+        if (tab == 0) next
+        id = substr($0, 1, tab - 1)
+        rest = substr($0, tab + 1)
+        if (id in skip) next
+        if (id in seen_run) next
+        seen_run[id] = 1
+        print rest
+      }
+    '
+
+exit 0
