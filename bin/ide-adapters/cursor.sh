@@ -82,6 +82,17 @@ _is_log_noise() {
   [ "${n:-0}" -ge 3 ]
 }
 
+# --- inferencia de cwd_hint --------------------------------------------------
+# O prompt_history.json e as memorias do Cursor GUI nao carregam cwd por item.
+# Best-effort: extrai um path citado no proprio texto, mas SO sob roots
+# conhecidos (~/www/{personal,isaac}/<repo>, ~/.dotfiles-ai, ~/.notes) pra nao
+# emitir cwd_hint lixo. Vazio se nada confiavel for encontrado.
+_infer_cwd() {
+  printf '%s' "$1" \
+    | grep -oE '(~|/Users/[A-Za-z0-9._-]+|/Volumes/[A-Za-z0-9._-]+)(/www/(personal|isaac)/[A-Za-z0-9._-]+|/\.dotfiles-ai|/\.notes)' \
+    | head -1
+}
+
 # --- normalizacao de --since para epoch_ms -----------------------------------
 # Aceita epoch_ms (so digitos), ISO8601, ou vazio. Vazio => sem filtro (0).
 since_ms() {
@@ -162,6 +173,7 @@ if [ -f "$CURSOR_STATE" ]; then
             # title capado em 120, summary capado em 500.
             title_c="$(printf '%s' "$title" | cut -c1-120)"
             summary_c="$(printf '%s' "$memory" | cut -c1-500)"
+            cwd_inf="$(_infer_cwd "$title $memory")"
 
             jq -nc \
               --arg item_id "$item_id" \
@@ -169,13 +181,14 @@ if [ -f "$CURSOR_STATE" ]; then
               --arg summary "$summary_c" \
               --arg ts "$ts" \
               --arg src "$CURSOR_STATE" \
+              --arg cwd "$cwd_inf" \
               '{
                  tool: "cursor",
                  item_id: $item_id,
                  title: $title,
                  summary: $summary,
                  timestamp: $ts,
-                 cwd_hint: "",
+                 cwd_hint: $cwd,
                  source_path: $src,
                  kind: "memory"
                }'
@@ -222,6 +235,7 @@ if [ -f "$PROMPT_HISTORY" ]; then
           # title = 1a linha (capada em 80); summary = 500 chars, newline->espaco
           title_c="$(printf '%s' "$prompt" | head -1 | cut -c1-80)"
           summary_c="$(printf '%s' "$prompt" | tr '\n' ' ' | cut -c1-500)"
+          cwd_inf="$(_infer_cwd "$prompt")"
 
           jq -nc \
             --arg item_id "$item_id" \
@@ -229,13 +243,14 @@ if [ -f "$PROMPT_HISTORY" ]; then
             --arg summary "$summary_c" \
             --arg ts "$mtime_ms" \
             --arg src "$PROMPT_HISTORY" \
+            --arg cwd "$cwd_inf" \
             '{
                tool: "cursor",
                item_id: $item_id,
                title: $title,
                summary: $summary,
                timestamp: $ts,
-               cwd_hint: "",
+               cwd_hint: $cwd,
                source_path: $src,
                kind: "prompt"
              }'
