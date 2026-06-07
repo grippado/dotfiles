@@ -1,39 +1,61 @@
 #!/usr/bin/env bash
 #
-# ide-adapter: claude-desktop (STUB)
+# ide-adapter: claude-desktop (STUB — documentado, sem fonte local utilizavel)
 #
-# Este e o adapter mais caro do conjunto. O Claude Desktop guarda o historico
-# de conversas em um IndexedDB baseado em LevelDB que pode chegar a ~9GB em:
-#   ~/Library/Application Support/Claude/IndexedDB
+# DIAGNOSTICO (verificado em 2026-06-07, READ-ONLY):
+#   A nota antiga de "~9GB de IndexedDB" estava ERRADA. Os 9GB sao do diretorio
+#   inteiro do app (~/Library/Application Support/Claude: VM bundles, caches,
+#   Code Cache, GPUCache, etc.), NAO do IndexedDB.
 #
-# Por custo (varredura de LevelDB de varios GB), o entrypoint NAO roda este
-# adapter por padrao: so o invoca com --ide-deep, exportando IDE_DEEP=1.
+#   O IndexedDB de fato e' minusculo (~4.5MB):
+#     ~/Library/Application Support/Claude/IndexedDB/
+#       https_claude.ai_0.indexeddb.leveldb   (~1.1MB .log + ~10KB .ldb)
+#       https_claude.ai_0.indexeddb.blob/     (~2.4MB de blobs binarios)
 #
-# ---------------------------------------------------------------------------
-# TODO (abordagem futura para a implementacao real):
-#   1. Localizar o diretorio LevelDB do Claude Desktop:
-#        ~/Library/Application Support/Claude/IndexedDB/<origin>/<db>.leveldb
-#   2. READ-ONLY: nunca abrir o LevelDB ativo direto (lock + WAL/MANIFEST). Em
-#      vez disso, copiar o diretorio .leveldb inteiro pra $TMPDIR e ler a copia,
-#      OU usar um leitor que respeite o lock. Nunca escrever na fonte.
-#   3. Parsear via leveldb/plyvel (Python) ou equivalente. IndexedDB serializa
-#      os valores em V8 structured-clone; sera preciso decodificar esse formato
-#      (ex.: biblioteca tipo ccl_chromium_indexeddb / chromedb) pra extrair as
-#      conversas. Filtrar pelas object stores de mensagens/conversas.
-#   4. Para cada conversa: emitir UMA linha JSON normalizada com kind="conversation".
-#      - title: titulo da conversa, capado em 120 chars.
-#      - summary: resumo de 2-3 linhas (max 500 chars). SUMARIZAR — NUNCA dumpar
-#        o conteudo cru das mensagens, blobs, anexos ou base64.
-#      - item_id: sha1 estavel (ex.: conversation_id + source_path), hex.
-#      - timestamp: melhor esforco (updatedAt/createdAt da conversa).
-#      - cwd_hint: "" (Claude Desktop nao tem workspace), source_path do .leveldb.
-#   5. Respeitar --since (epoch_ms|iso|vazio): so emitir conversas mais novas.
-#   6. PROIBIDO emitir segredos: nunca tocar/emitir tokens, sk-ant-, sk-,
-#      refresh_token, access_token, Bearer, credenciais de conta.
-#   7. SEMPRE exit 0; diagnostico vai pra stderr; stdout e JSONL puro.
+#   Conteudo do leveldb (object store unico: "keyval-store"):
+#     - Estado de UI persistido (Zustand): {"state":{"starredIds":[...]},...}
+#       -> so IDs de itens "starred" (ex.: local_<uuid>). SEM titulo, SEM texto.
+#     - "tipTapEditorState": o rascunho atual NAO enviado do composer. Conteudo
+#       efemero (uma mensagem em digitacao), serializado em V8 structured-clone
+#       e entrelacado com bytes binarios — NAO e' texto limpo/parseavel.
+#   O Local Storage leveldb tem um cache do React Query com a chave
+#   "conversations_v2", mas com "queries":[] (vazio): nada de conversa persiste
+#   localmente.
+#
+#   CONCLUSAO: o Claude Desktop e' um wrapper web de claude.ai. O historico de
+#   conversas e as memorias vivem no SERVIDOR (claude.ai), nao em disco. NAO ha
+#   uma object store local de conversas/memorias para parsear. Extrair "titulos
+#   de conversa" deste IndexedDB e' impossivel hoje porque esses dados nao estao
+#   aqui — o problema nao e' "falta de ferramenta", e' "fonte inexistente".
+#
+# O QUE FALTARIA para tornar isto real (NENHUM caminho e' barato/seguro hoje):
+#   (a) Decodificar V8 structured-clone do leveldb. Mesmo assim so renderia o
+#       rascunho do composer e IDs starred — nao conversas. Precisaria de uma lib
+#       de leitura de IndexedDB do Chromium (ccl_chromium_indexeddb / plyvel),
+#       que NAO esta instalada (checado: `import plyvel` falha; idem ccl_leveldb,
+#       ccl_chromium_indexeddb). Baixo retorno: nao ha conversa pra extrair.
+#   (b) API/export de claude.ai (onde os dados realmente estao). Exigiria
+#       credenciais/sessao e chamada de rede — fora do escopo READ-ONLY-em-disco
+#       deste harvester e com risco de vazar segredos.
+#   => Por isso este adapter permanece STUB. Reavaliar so se o Claude Desktop
+#      passar a persistir conversas/memorias localmente (ex.: nova object store
+#      "conversations"/"memories" com titulo+texto). Hoje nao persiste.
+#
+# CONTRATO (mantido p/ quando virar real):
+#   - Invocado como: claude-desktop.sh --since "<epoch_ms_ou_iso_ou_vazio>"
+#   - So roda em modo deep (entrypoint exporta IDE_DEEP=1 com --ide-deep).
+#   - Emite SOMENTE JSONL normalizado em stdout; diagnostico vai pra stderr.
+#   - SEMPRE exit 0.
+#   - Item normalizado:
+#       { tool, item_id, title, summary, timestamp, cwd_hint, source_path, kind }
+#     kind="conversation"; title<=120; summary<=500 (SUMARIZAR, nunca dumpar
+#     blob cru); item_id = sha1 estavel; cwd_hint="" (Desktop nao tem workspace).
+#   - READ-ONLY ABSOLUTO: nunca abrir o leveldb ativo em modo rw. Copiar os
+#     arquivos pra $TMPDIR e ler a copia. PROIBIDO emitir segredos (sk-ant-,
+#     sk-, Bearer, refresh_token, access_token, oauth, credenciais).
 # ---------------------------------------------------------------------------
 
-set -euo pipefail
+set -uo pipefail
 
 # Parse de argumentos (contrato: --since "<epoch_ms_ou_iso_ou_vazio>").
 # O stub aceita e ignora --since; mantido aqui pra compatibilidade do contrato.
@@ -55,14 +77,17 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
-# Gate de custo: so faz qualquer coisa quando o entrypoint pede --ide-deep
-# (que exporta IDE_DEEP=1). Sem isso, no-op silencioso.
+# Gate de custo/opt-in: so faz qualquer coisa quando o entrypoint pede
+# --ide-deep (que exporta IDE_DEEP=1). Sem isso, no-op silencioso.
 if [ "${IDE_DEEP:-}" != "1" ]; then
   exit 0
 fi
 
-# Modo deep: por ora ainda nao implementado. Loga em stderr e emite zero itens.
-echo "claude-desktop adapter: LevelDB parse nao implementado (TODO)" >&2
+# Modo deep: STUB. A fonte local (IndexedDB do Claude Desktop) so guarda estado
+# de UI (starredIds + rascunho do composer); o historico de conversas vive no
+# servidor claude.ai e nao em disco. Nada a emitir. Loga claramente e sai 0.
+echo "claude-desktop adapter: STUB — sem fonte local de conversas/memorias." >&2
+echo "claude-desktop adapter: IndexedDB local so tem estado de UI (starredIds + rascunho do composer); historico de conversas e' server-side (claude.ai). Zero itens. Ver header do script." >&2
 
 # Zero itens em stdout. Sempre exit 0.
 exit 0

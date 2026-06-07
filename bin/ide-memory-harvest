@@ -220,9 +220,18 @@ for adapter in "${all_adapters[@]}"; do
 
   since="$(since_for_tool "$name")"
 
+  # Adapters deep so fazem trabalho real quando enxergam IDE_DEEP=1 no ambiente
+  # (gate interno do proprio adapter, ex.: claude-desktop.sh). O gate is_deep
+  # acima decide SE rodamos; esta var decide se o adapter sai do no-op.
+  # (Sem arrays vazios aqui: bash 3.2 do macOS quebra "${arr[@]}" sob set -u.)
+  ide_deep_env="0"
+  if is_deep "$name"; then
+    ide_deep_env="1"
+  fi
+
   # Guard: falha de um adapter nao derruba os outros. stdout vai pro merge,
   # stderr ja vai direto pro stderr do harvester.
-  if ! bash "$adapter" --since "$since" >>"$merged" 2>>/dev/stderr; then
+  if ! IDE_DEEP="$ide_deep_env" bash "$adapter" --since "$since" >>"$merged" 2>>/dev/stderr; then
     log "AVISO: adapter '$name' saiu com erro — continuando com os demais."
   fi
 done
