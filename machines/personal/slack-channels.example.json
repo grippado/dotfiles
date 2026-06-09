@@ -1,0 +1,80 @@
+{
+  "_doc": "EXEMPLO documentado do schema enriquecido de slack-channels.json (NÃO é o arquivo real). O real é gerado/enriquecido pelo agente slack-context-profiler (via /slack-profile) e mora em machines/<machine>/slack-channels.json. JSON não tem comentários nativos, então a doc fica em chaves '_doc'/'_note' — chaves prefixadas com '_' são ignoradas pelos leitores (Frente 0.8 do /organize). Runbook: ~/.notes/1-contexts/dotfiles-ai/runbooks/slack-context-profiler.md",
+
+  "_doc_retrocompat": "CRÍTICO: a Frente 0.8 hoje lê channels[].name, channels[].context e a chave routing_overrides. O schema v2 SÓ ADICIONA campos — nunca remove nem renomeia name/context/routing_overrides. Um leitor antigo (v1) continua funcionando lendo só name+context. Sem $schema_version (>=2), o /organize cai no comportamento legado.",
+
+  "$schema_version": 2,
+  "_doc_schema_version": "2 = enriquecido (escrito pelo profiler). Ausente ou 1 = formato simples legado {channels:[{name,context}]}. A Frente 0.8 usa este campo pra detectar capabilities.",
+
+  "generated_at": "2026-06-09T18:30:00-03:00",
+  "_doc_generated_at": "ISO-8601 local. Usado pra staleness: /organize sugere rodar /slack-profile se > 14 dias.",
+
+  "generated_by": "slack-context-profiler",
+  "machine": "personal",
+  "_doc_machine": "Escopo de máquina. Cada máquina autentica num workspace Slack distinto (personal vs arco), então o perfil é por máquina.",
+
+  "window": { "since": "2026-05-09", "until": "2026-06-09" },
+  "_doc_window": "Janela do profiling (default: hoje − 30 dias). Aparece na nota de vault e ajuda a interpretar os scores.",
+
+  "channels": [
+    {
+      "_doc": "Canal CURADO à mão. source: curated → o profiler NUNCA sobrescreve o context (curadoria humana vence). Só ENRIQUECE id/activity_score/last_seen.",
+      "name": "comunicados",
+      "context": "arco",
+      "id": "C0123ABC",
+      "activity_score": 42,
+      "last_seen": "2026-06-08",
+      "confidence": "high",
+      "source": "curated"
+    },
+    {
+      "_doc": "Canal DESCOBERTO pelo profiler. source: profiler → context é suggested_context (heurística de prefixo/keyword). confidence: medium porque casou só por prefixo (não é curated nem routing_override). Editável à mão; vira curated ao mudar source.",
+      "name": "flagbridge-dev",
+      "context": "flagbridge",
+      "id": "C0456DEF",
+      "activity_score": 17,
+      "last_seen": "2026-06-07",
+      "confidence": "medium",
+      "source": "profiler"
+    },
+    {
+      "_doc": "Canal com roteamento de baixa confiança (só casou keyword OU caiu no default). confidence: low → /organize trata o suggested_context como 'melhor chute' e sinaliza revisão.",
+      "name": "random-x",
+      "context": "uncategorized",
+      "id": "C0789JKL",
+      "activity_score": 3,
+      "last_seen": "2026-05-30",
+      "confidence": "low",
+      "source": "profiler"
+    }
+  ],
+  "_doc_channels": "Array retrocompatível. Campos por canal: name/context (INALTERADOS, lidos pelo leitor v1); id (channel_id resolvido — evita slack_search_channels em run); activity_score (msg_count do Gabriel na janela — ordem sob rate-limit); last_seen (última data com atividade dele — staleness/poda); confidence (high = source curated OU match em routing_overrides; medium = casou só por prefixo; low = só keyword OU default — prefixo NUNCA vira high pra não ser circular com o sinal high da Frente 0.8); source (curated = mão, profiler = descoberto — guia o merge não-destrutivo).",
+
+  "routing_overrides": { "flagbridge-dev": "flagbridge" },
+  "_doc_routing_overrides": "INALTERADO (retrocompat). Mapa explícito canal→contexto com prioridade MÁXIMA no roteamento da Frente 0.8 (vence até o channels[].context). Curado à mão.",
+
+  "top_interlocutors": [
+    {
+      "_doc": "Pessoa ranqueada. score = 2.0*coReply + 1.0*directTo + 0.7*mentionOut + 1.5*dm. contexts = contextos predominantes (pra desambiguar menção/DM na Frente 0.8 s2/s3).",
+      "name": "Fulano de Tal",
+      "user_id": "U0789GHI",
+      "exchanges": 23,
+      "contexts": ["arco", "flagbridge"],
+      "signals": { "coReply": 8, "directTo": 6, "mentionOut": 4, "dm": 5 }
+    }
+  ],
+  "_doc_top_interlocutors": "Pessoas ranqueadas. Bots/apps (GitHub/Linear/CI) são filtrados. Usado pela Frente 0.8 pra pré-popular o cache de display names (user_id→name) e pesar menção/DM. signals: coReply (resposta em thread), directTo (mandou msg pro Gabriel), mentionOut (Gabriel mencionou), dm (troca em DM).",
+
+  "dm_partners": [
+    {
+      "_doc": "Parceiro de DM. primary_context permite à Frente 0.8 rotear a DM pro contexto de trabalho em vez de cair sempre em 'pessoal'. O CONTEÚDO da DM segue local-only — só a contagem agregada entra aqui.",
+      "name": "Beltrano",
+      "user_id": "U0999XYZ",
+      "exchanges": 12,
+      "primary_context": "arco"
+    }
+  ],
+  "_doc_dm_partners": "Parceiros de DM com contagem AGREGADA (exchanges) e contexto predominante. NUNCA transcrição/conteúdo. primary_context faz a DM deixar de ser sempre 'pessoal' no roteamento.",
+
+  "_doc_privacidade": "Este arquivo e a nota de vault contêm SÓ agregados: nomes de canais públicos, nomes de pessoas, contagens e scores. NUNCA conteúdo de mensagem, transcrição de thread ou conteúdo de DM. 'Ranking sim, transcrição não.'"
+}
