@@ -51,7 +51,8 @@ Plugin `arco-default@olaisaac-arco-agents` (que provê `arco-default:*` — work
 ## Roteamento de trabalho
 
 - **PR review**: `/review-arco` (delega ao agent `arco-pr-reviewer`) — workspace mode
-- **Resposta a comentários PR**: `/review-arco-answer` (delega ao `arco-pr-answerer`) — workspace mode
+- **Resposta a comentários PR (rascunho read-only)**: `/review-arco-answer` (delega ao `arco-pr-answerer`) — workspace mode
+- **Iterar threads de PR (aplica + responde + reage + resolve + commita + pusha)**: `/review-arco-iterate` — workspace mode, repo checkout local
 - **Cross-repo coordination**: consultar este arquivo + `technical-refining/` — workspace mode
 - **Trabalho profundo em repo**: abrir sessão no repo direto (repo mode)
 
