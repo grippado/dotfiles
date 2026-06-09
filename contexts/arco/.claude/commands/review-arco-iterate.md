@@ -66,13 +66,13 @@ Cross-repo: se o `pwd` não for o checkout do repo alvo, **aborte** pedindo para
 
 **Atenção a worktrees:** o checkout da PR pode estar em `.worktrees/<branch>/`. Confirme em qual diretório a branch da PR está (`git worktree list`) e opere lá. A branch local precisa casar com `headRefName` da PR.
 
-### 2. Coletar metadados + threads NÃO resolvidas
+### 2. Coletar metadados + TODAS as threads (abertas e resolvidas)
 
 ```bash
 gh pr view $PR_NUMBER --repo $REPO_FULL --json number,title,headRefName,baseRefName,url,state,isDraft
 ```
 
-Threads não resolvidas só aparecem via GraphQL (a REST não expõe `isResolved`):
+Buscar **todas** as threads via GraphQL (a REST não expõe `isResolved`). Buscar resolvidas também é essencial: elas formam o **corpus de referência** para o cross-reference do passo 3.
 
 ```bash
 gh api graphql -f query='
@@ -87,16 +87,25 @@ gh api graphql -f query='
           path
           line
           comments(first: 1) {
-            nodes { databaseId author { login } createdAt body }
+            nodes { databaseId url author { login } createdAt body }
           }
         }
       }
     }
   }
-}' --jq '.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)'
+}'
 ```
 
-Para cada thread guarde: `id` (NODE id, formato `PRRT_...` — usado para resolver), `path`, `line`, `isOutdated`, e do primeiro comentário: `databaseId` (usado para reply/react), `author.login`, `body`.
+Particionar o resultado em dois conjuntos:
+
+- **Threads abertas** (`isResolved == false`) — as que serão endereçadas neste run. Guardar: `id` (NODE id `PRRT_...`, usado para resolver), `path`, `line`, `isOutdated`, e do primeiro comentário `databaseId` (reply/react), `url` (permalink), `author.login`, `body`.
+- **Corpus de referência** (`isResolved == true`) — guardar `url`, `path:line`, `author.login` e um resumo do ponto + veredito (ler o body; se truncado, `gh api repos/$REPO_FULL/pulls/comments/<databaseId>`). Esse corpus alimenta a detecção de sobreposição.
+
+Ler o body completo de um comentário quando truncado:
+
+```bash
+gh api repos/$REPO_FULL/pulls/comments/<databaseId> -q '.body'
+```
 
 Ler o body completo de um comentário quando truncado:
 
@@ -112,18 +121,31 @@ Se não sobrar nenhuma thread acionável, avise no chat e **termine** (não comm
 
 ### 3. Verificar e decidir cada thread (planejar)  · fase 1
 
-Para CADA thread, ANTES de aceitar ou recusar:
+Para CADA thread aberta, ANTES de aceitar ou recusar:
 
-- **Verificar a alegação contra o código/testes/docs reais.** O `arco-pr-reviewer` produz falsos positivos com frequência (ex.: aponta perda de precisão num `bigint mode:'number'`, ou "mensagem some" num cenário que já tem teste). Leia o arquivo citado, os testes adjacentes e a doc do endpoint antes de concluir.
+- **Verificar a alegação contra o código/testes/docs reais.** O `arco-pr-reviewer` produz falsos positivos com frequência (ex.: aponta perda de precisão num `bigint mode:'number'`, ou "mensagem some" num cenário que já tem teste). Leia o arquivo citado, os testes adjacentes e a doc do endpoint antes de concluir. Reviewers humanos erram menos, mas o mesmo rigor se aplica.
 - Classifique: **procede** (aplicar correção) ou **improcedente/marginal** (recusar com fundamento).
 - Sempre **citar `arquivo:linha`** na justificativa.
 
-**Reação alinhada ao teor da resposta** (vale para bot E humanos):
+#### 3a. Cross-reference com threads já tratadas (camada de decisão)
 
-- 👍 (`content=+1`) quando a sugestão é acolhida/procedente (e será aplicada).
-- 👎 (`content=-1`) quando improcedente, marginal ou recusada com fundamento.
+Antes de redigir a réplica, comparar o ponto de cada thread aberta contra (a) o corpus de threads resolvidas do passo 2 e (b) as threads já processadas mais cedo NESTE run. Classificar a sobreposição:
 
-Monte o **plano** (isto é o "dry-run" que será mostrado na confirmação): por thread, registre `{databaseId, path:line, autor, veredito, reação 👍/👎, rascunho da réplica}`, e ao final `{lista de arquivos alterados, resumo do diff, mensagem de commit proposta}`.
+- **`none`** — ponto novo. Seguir normal.
+- **`duplicate`** — mesmo ponto já tratado e decidido numa thread irmã, sem nada de novo. Aplica a MESMA decisão. A réplica DEVE citar e **linkar** a thread irmã (markdown `[link](url)`) e dizer explicitamente que é o mesmo ponto já endereçado. Não reabrir a análise nem reaplicar correção que já foi feita.
+- **`related-but-distinct`** — toca o mesmo código/tema de uma thread irmã, mas traz um ângulo genuinamente diferente (ex.: mesma subquery, mas o irmão era sobre *correção* e este é sobre *performance/índice*). A réplica DEVE linkar a irmã para contexto E deixar claro **o que há de diferente**, e dar a este ponto sua **própria decisão** (não herdar a da irmã).
+
+**Regra de ouro (a "camada de decisão" que o usuário pediu):** nunca tratar como duplicado de forma silenciosa. Sempre articular, na réplica, se é duplicado puro ou se, apesar de já citado em outro ponto, há algo distinto que merece decisão própria. Na dúvida entre `duplicate` e `related-but-distinct`, escolher `related-but-distinct` e explicar a diferença, errar para o lado de pensar a mais.
+
+Como linkar a irmã: usar o `url` (permalink do comentário) coletado no passo 2. Ex.: `já endereçado em [PERF / MIN(id)](https://github.com/{owner}/{repo}/pull/{n}#discussion_r{databaseId})`.
+
+#### 3b. Reação alinhada ao teor da resposta (vale para bot E humanos)
+
+- 👍 (`content=+1`) quando a sugestão é acolhida/procedente (e será aplicada), OU quando é um `related-but-distinct` válido.
+- 👎 (`content=-1`) quando improcedente, marginal, ou `duplicate` de algo já recusado.
+- Para `duplicate` de algo já **aceito e aplicado**: 👍 (o ponto é válido), com réplica curta apontando a irmã.
+
+Monte o **plano** (o "dry-run" da confirmação): por thread, registre `{databaseId, path:line, autor, veredito, sobreposição (none|duplicate|related-but-distinct + link da irmã), reação 👍/👎, rascunho da réplica}`, e ao final `{lista de arquivos alterados, resumo do diff, mensagem de commit proposta}`.
 
 ### 4. Aplicar as correções pertinentes  · fase 2
 
@@ -202,7 +224,7 @@ git push origin <headRefName>
 
 ### 9. Resposta no chat
 
-Tabela curta: por thread `{path:line | veredito | 👍/👎}`, depois `{commit hash, range de push}`. Sinalize threads humanas deixadas abertas (`needs-discussion`). Não repita os bodies completos das réplicas.
+Tabela curta: por thread `{path:line | veredito | sobreposição | 👍/👎}`, depois `{commit hash, range de push}`. Sinalize threads humanas deixadas abertas (`needs-discussion`) e quais foram marcadas como `duplicate`/`related-but-distinct` (com link da irmã). Não repita os bodies completos das réplicas.
 
 ## Convenções de texto (GitHub = publicação externa)
 
