@@ -26,13 +26,6 @@
         "backgroundColor": "ansi256:176"
       },
       {
-        "id": "1f35e146-cc5c-45cc-870f-fbad883e2871",
-        "type": "current-working-dir",
-        "backgroundColor": "ansi256:221",
-        "rawValue": true,
-        "color": "ansi256:234"
-      },
-      {
         "id": "5",
         "type": "git-branch",
         "color": "ansi256:234",
@@ -47,20 +40,19 @@
     ],
     [
       {
+        "id": "1f35e146-cc5c-45cc-870f-fbad883e2871",
+        "type": "current-working-dir",
+        "backgroundColor": "ansi256:221",
+        "rawValue": true,
+        "color": "ansi256:234"
+      }
+    ],
+    [
+      {
         "id": "0fa28066-47a3-4190-8cdd-c77ac141dacb",
         "type": "context-bar",
         "backgroundColor": "ansi256:111",
         "color": "ansi256:16"
-      },
-      {
-        "id": "f497bbc7-72cf-410d-935b-24e5c163b915",
-        "type": "session-usage",
-        "backgroundColor": "ansi256:248",
-        "metadata": {
-          "display": "progress-short"
-        },
-        "rawValue": false,
-        "color": "ansi256:234"
       },
       {
         "id": "4396926c-164d-4be5-a4d2-48d1490eedc6",
