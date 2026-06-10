@@ -87,6 +87,27 @@ echo "[REGISTRY.json — machine-specific]"
 link "$REPO/machines/$MACHINE/REGISTRY.json" "$CLAUDE_DIR/REGISTRY.json"
 
 echo
+echo "[ccstatusline — machine-specific statusline config]"
+# Destino fica em ~/.config/ccstatusline/ (fora de $CLAUDE_DIR), entao a funcao
+# link() generica nao serve (o backup dela assume path sob $CLAUDE_DIR).
+CCS_SRC="$REPO/machines/$MACHINE/ccstatusline.json"
+CCS_DST="$HOME/.config/ccstatusline/settings.json"
+if [ ! -f "$CCS_SRC" ]; then
+  echo "  ! $CCS_SRC missing — skipping (statusline keeps its current local config)"
+elif [ -L "$CCS_DST" ] && [ "$(readlink "$CCS_DST")" = "$CCS_SRC" ]; then
+  echo "  = $CCS_DST (already linked)"
+else
+  run "mkdir -p \"$(dirname "$CCS_DST")\""
+  if [ -e "$CCS_DST" ] && [ ! -L "$CCS_DST" ]; then
+    run "mkdir -p \"$BACKUP/ccstatusline\""
+    run "cp \"$CCS_DST\" \"$BACKUP/ccstatusline/settings.json\""
+  fi
+  if [ -e "$CCS_DST" ] || [ -L "$CCS_DST" ]; then run "rm -rf \"$CCS_DST\""; fi
+  run "ln -s \"$CCS_SRC\" \"$CCS_DST\""
+  echo "  → $CCS_DST → $CCS_SRC"
+fi
+
+echo
 echo "[commands/ — file-by-file (preserves Atlas-managed scoped symlinks)]"
 for src in "$REPO/claude/commands"/*.md; do
   [ -f "$src" ] || continue

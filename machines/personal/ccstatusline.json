@@ -1,0 +1,111 @@
+{
+  "version": 3,
+  "lines": [
+    [
+      {
+        "id": "f7ba8d4e-46a1-4803-9aab-81443cb5f57e",
+        "type": "model",
+        "backgroundColor": "ansi256:111",
+        "merge": true,
+        "rawValue": true,
+        "color": "ansi256:16"
+      },
+      {
+        "id": "adf008e0-0cca-4425-9286-be827ed437e3",
+        "type": "version",
+        "backgroundColor": "ansi256:248",
+        "rawValue": false,
+        "merge": true,
+        "color": "ansi256:234"
+      },
+      {
+        "id": "1",
+        "type": "thinking-effort",
+        "color": "ansi256:16",
+        "rawValue": true,
+        "backgroundColor": "ansi256:176"
+      },
+      {
+        "id": "1f35e146-cc5c-45cc-870f-fbad883e2871",
+        "type": "current-working-dir",
+        "backgroundColor": "ansi256:221",
+        "rawValue": true,
+        "color": "ansi256:234"
+      },
+      {
+        "id": "5",
+        "type": "git-branch",
+        "color": "ansi256:234",
+        "backgroundColor": "ansi256:80"
+      },
+      {
+        "id": "7",
+        "type": "git-changes",
+        "color": "ansi256:16",
+        "backgroundColor": "ansi256:111"
+      }
+    ],
+    [
+      {
+        "id": "0fa28066-47a3-4190-8cdd-c77ac141dacb",
+        "type": "context-bar",
+        "backgroundColor": "ansi256:111",
+        "color": "ansi256:16"
+      },
+      {
+        "id": "f497bbc7-72cf-410d-935b-24e5c163b915",
+        "type": "session-usage",
+        "backgroundColor": "ansi256:248",
+        "metadata": {
+          "display": "progress-short"
+        },
+        "rawValue": false,
+        "color": "ansi256:234"
+      },
+      {
+        "id": "4396926c-164d-4be5-a4d2-48d1490eedc6",
+        "type": "reset-timer",
+        "backgroundColor": "ansi256:215",
+        "metadata": {
+          "display": "time"
+        },
+        "rawValue": false,
+        "color": "ansi256:16"
+      },
+      {
+        "id": "1a6b72e8-eae7-4dd5-b5cd-a0fd365a70c8",
+        "type": "weekly-reset-timer",
+        "backgroundColor": "ansi256:176",
+        "metadata": {
+          "display": "time"
+        },
+        "color": "ansi256:16"
+      }
+    ]
+  ],
+  "flexMode": "full",
+  "compactThreshold": 60,
+  "colorLevel": 2,
+  "inheritSeparatorColors": false,
+  "globalBold": false,
+  "minimalistMode": false,
+  "powerline": {
+    "enabled": true,
+    "separators": [
+      ""
+    ],
+    "separatorInvertBackground": [
+      false
+    ],
+    "startCaps": [
+      ""
+    ],
+    "endCaps": [
+      ""
+    ],
+    "autoAlign": false,
+    "continueThemeAcrossLines": true,
+    "theme": "custom"
+  },
+  "defaultPadding": " "
+}
