@@ -55,26 +55,73 @@
 
   "top_interlocutors": [
     {
-      "_doc": "Pessoa ranqueada. score = 2.0*coReply + 1.0*directTo + 0.7*mentionOut + 1.5*dm. contexts = contextos predominantes (pra desambiguar menção/DM na Frente 0.8 s2/s3).",
-      "name": "Fulano de Tal",
+      "_doc": "LIDERANÇA (P1). type: leadership casado nas Pessoas-chave do vault (role_source: vault) → role_mult ×1.5. Score normalizado 0–100 (máx da run = 100). reciprocity alta (mão dupla) e recencyDays baixo (recente) sustentam o topo.",
+      "name": "Vitor Matta",
       "user_id": "U0789GHI",
-      "exchanges": 23,
-      "contexts": ["arco", "flagbridge"],
-      "signals": { "coReply": 8, "directTo": 6, "mentionOut": 4, "dm": 5 }
+      "tier": "P1",
+      "type": "leadership",
+      "score": 100,
+      "role_source": "vault",
+      "contexts": ["arco"],
+      "signals": { "coReply": 8, "directTo": 6, "mentionOut": 4, "dm_raw": 5, "reciprocity": 0.83, "recencyDays": 1 }
+    },
+    {
+      "_doc": "PAR (P1). type: peer casado nas Pessoas-chave (role_source: vault) → role_mult ×1.3. P1 porque type ∈ {leadership,peer} E score_norm ≥ 55.",
+      "name": "Torres",
+      "user_id": "U0111AAA",
+      "tier": "P1",
+      "type": "peer",
+      "score": 78,
+      "role_source": "vault",
+      "contexts": ["arco"],
+      "signals": { "coReply": 5, "directTo": 4, "mentionOut": 3, "dm_raw": 2, "reciprocity": 0.71, "recencyDays": 2 }
+    },
+    {
+      "_doc": "PAR (P2). type: peer (role_source: vault) mas score_norm < 55 → não atinge o gate P1 de liderança/par; cai em P2 (score_norm ≥ 30). Mostra que role não basta: precisa de sinal.",
+      "name": "Breno",
+      "user_id": "U0222BBB",
+      "tier": "P2",
+      "type": "peer",
+      "score": 41,
+      "role_source": "vault",
+      "contexts": ["arco"],
+      "signals": { "coReply": 3, "directTo": 2, "mentionOut": 1, "dm_raw": 1, "reciprocity": 0.66, "recencyDays": 4 }
+    },
+    {
+      "_doc": "OPS de ALTO VOLUME (P3) — ilustra a TRAVA. dm_raw=18 (RH/saúde te pingando), mas reciprocity=0.08 (unilateral): dm_capped=min(18,10)=10, dm_contrib=10*0.08=0.8. Sem co-reply/menção. type: ops → role_mult ×0.5 E trava ops/external NUNCA passa de P2 (aqui cai em P3 por score baixo). role_source: inferido (não está nas Pessoas-chave). É O CASO QUE O MODELO V2 CORRIGE: volume bruto de DM não compra prioridade.",
+      "name": "Fabiana",
+      "user_id": "U0333CCC",
+      "tier": "P3",
+      "type": "ops",
+      "score": 22,
+      "role_source": "inferido",
+      "contexts": ["arco"],
+      "signals": { "coReply": 0, "directTo": 1, "mentionOut": 0, "dm_raw": 18, "reciprocity": 0.08, "recencyDays": 1 }
     }
   ],
-  "_doc_top_interlocutors": "Pessoas ranqueadas. Bots/apps (GitHub/Linear/CI) são filtrados. Usado pela Frente 0.8 pra pré-popular o cache de display names (user_id→name) e pesar menção/DM. signals: coReply (resposta em thread), directTo (mandou msg pro Gabriel), mentionOut (Gabriel mencionou), dm (troca em DM).",
+  "_doc_top_interlocutors": "Pessoas ranqueadas pelo modelo v2. Bots/apps (GitHub/Linear/CI) são filtrados. Pipeline: dm_capped=min(dm_raw,10); dm_contrib=dm_capped*reciprocity; score_base=2.0*coReply+1.2*directTo+0.7*mentionOut+1.0*dm_contrib; score_recency=score_base*recency (recency=0.5^(recencyDays/14)); score_final=score_recency*role_mult (leadership×1.5, peer×1.3, cross-team×1.0, external×0.9, ops×0.5); score=100*score_final/max. tier: P1 se type∈{leadership,peer} E score≥55 OU score≥85; P2 se score≥30; senão P3. TRAVA: ops/external nunca passam de P2. role_source: vault (casou em ## Pessoas-chave de 1-contexts/*/_index.md) vs inferido. signals: coReply (thread substantiva), directTo (ele me mandou), mentionOut (eu mencionei), dm_raw (DM bruto), reciprocity (min/max de msgs bidirecionais 0..1), recencyDays (dias desde a última troca). Usado pela Frente 0.8 pra pré-popular o cache de display names (user_id→name) e priorizar por tier.",
 
   "dm_partners": [
     {
-      "_doc": "Parceiro de DM. primary_context permite à Frente 0.8 rotear a DM pro contexto de trabalho em vez de cair sempre em 'pessoal'. O CONTEÚDO da DM segue local-only — só a contagem agregada entra aqui.",
-      "name": "Beltrano",
-      "user_id": "U0999XYZ",
+      "_doc": "Parceiro de DM de trabalho. tier/type herdados do mesmo user_id em top_interlocutors. primary_context permite à Frente 0.8 rotear a DM pro contexto de trabalho em vez de cair sempre em 'pessoal'. O CONTEÚDO da DM segue local-only — só a contagem agregada entra aqui.",
+      "name": "Breno",
+      "user_id": "U0222BBB",
       "exchanges": 12,
+      "tier": "P2",
+      "type": "peer",
+      "primary_context": "arco"
+    },
+    {
+      "_doc": "Parceiro de DM ops de alto volume. exchanges alto, mas tier P3 (herdado): a TRAVA ops/external + reciprocity baixa impedem que o volume de DM o promova. Mostra na prática que volume ≠ prioridade.",
+      "name": "Fabiana",
+      "user_id": "U0333CCC",
+      "exchanges": 18,
+      "tier": "P3",
+      "type": "ops",
       "primary_context": "arco"
     }
   ],
-  "_doc_dm_partners": "Parceiros de DM com contagem AGREGADA (exchanges) e contexto predominante. NUNCA transcrição/conteúdo. primary_context faz a DM deixar de ser sempre 'pessoal' no roteamento.",
+  "_doc_dm_partners": "Parceiros de DM com contagem AGREGADA (exchanges), tier/type herdados de top_interlocutors e contexto predominante. NUNCA transcrição/conteúdo. primary_context faz a DM deixar de ser sempre 'pessoal' no roteamento; tier/type evitam que volume bruto de DM (ex.: RH) seja confundido com prioridade.",
 
   "_doc_privacidade": "Este arquivo e a nota de vault contêm SÓ agregados: nomes de canais públicos, nomes de pessoas, contagens e scores. NUNCA conteúdo de mensagem, transcrição de thread ou conteúdo de DM. 'Ranking sim, transcrição não.'"
 }

@@ -17,8 +17,8 @@ Comando fino. Delega TODO o trabalho ao agente **`slack-context-profiler`** via 
 1. Verificar guard: se as tools `mcp__plugin_slack_slack__*` não estiverem disponíveis, avisar que o perfil precisa de run interativo com Slack OAuth e parar (não falhar).
 2. Repassar os argumentos recebidos (`--since`, `--machine`, `--dry-run`, `--max-calls`, `--top-channels`, `--top-interlocutors`) ao agente.
 3. Invocar via Task o subagent `slack-context-profiler` com esses argumentos.
-4. Ao final, ecoar o relatório do agente: janela, top canais/interlocutores, arquivos escritos (caminhos absolutos) e a sugestão de **commitar** o `slack-channels.json` e a(s) nota(s) de vault.
+4. Ao final, ecoar o relatório do agente: janela, top canais/interlocutores (por tier), arquivos escritos (caminhos absolutos) e lembrar que os outputs são **local-only por padrão** (gitignored) — versionar é opt-in via `git add -f`.
 
 ## Notas
-- Não roda git. Lembrar o usuário de commitar os outputs (dotfiles-ai = human-managed; vault = commit normal).
+- Não roda git. Os outputs (`slack-channels.json` + `slack/slack-context-map.md`) são **local-only por padrão** (incluem agregados de DM); versionar é decisão manual do usuário (`git add -f`).
 - Para atualizar a whitelist consumida pelo /organize, este é o caminho canônico.
