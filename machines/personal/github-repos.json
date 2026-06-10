@@ -21,6 +21,7 @@
   "_doc_org_overrides": "Quando um repo da camada @me global cai fora dos contexts acima, roteia pelo owner: OlaIsaac->arco, flagbridge->flagbridge. Owner desconhecido -> inbox.",
   "org_overrides": {
     "OlaIsaac": "arco",
+    "classapp": "arco",
     "flagbridge": "flagbridge",
     "grippado": "pessoal"
   }
