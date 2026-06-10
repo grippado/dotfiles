@@ -1,0 +1,19 @@
+{
+  "_doc": "EXEMPLO. Whitelist de repos GitHub vigiados pela Frente 0.6 do /organize. Copie pra github-repos.json e ajuste. A camada repo-scoped poll cada repo listado (atividade do dia + PRs dos outros + threads p/ bola comigo); a camada @me global (review-requested/author/assigned) roda em QUALQUER repo, independente desta lista. So nomes de repo, sem segredo.",
+  "$schema_version": 1,
+  "contexts": {
+    "arco": [
+      "OlaIsaac/<repo-ativo-1>",
+      "OlaIsaac/<repo-ativo-2>"
+    ],
+    "flagbridge": [
+      "flagbridge/<repo>"
+    ]
+  },
+  "_doc_org_overrides": "Roteia repos da camada @me que caem fora dos contexts acima, pelo owner. Owner desconhecido -> inbox.",
+  "org_overrides": {
+    "OlaIsaac": "arco",
+    "flagbridge": "flagbridge",
+    "grippado": "pessoal"
+  }
+}
