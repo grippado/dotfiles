@@ -1,0 +1,4 @@
+{
+  "_doc": "Mapeia team key do Linear (prefixo do issue ID) -> contexto do vault, lido pela Frente 0.9. Copie pra linear-teams.json. Team ausente cai na heuristica (times Isaac -> arco) ou no inbox.",
+  "teams": { "CPU": "arco", "MOM": "arco", "AUTH": "arco" }
+}
