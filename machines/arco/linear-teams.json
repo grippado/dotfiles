@@ -1,0 +1,12 @@
+{
+  "_doc": "Mapeia team key do Linear (prefixo do issue ID, ex.: CPU-1234) -> contexto do vault, lido pela Frente 0.9. Estes sao os teams onde o Gabriel atua hoje (todos Isaac -> arco). Team ausente cai na heuristica (times Isaac -> arco) ou no inbox.",
+  "teams": {
+    "CPU": "arco",
+    "MOM": "arco",
+    "CAN": "arco",
+    "CMA": "arco",
+    "INC": "arco",
+    "INTCOM": "arco",
+    "AUTH": "arco"
+  }
+}
