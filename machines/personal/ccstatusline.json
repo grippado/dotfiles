@@ -65,6 +65,16 @@
         "color": "ansi256:16"
       },
       {
+        "id": "f497bbc7-72cf-410d-935b-24e5c163b915",
+        "type": "session-usage",
+        "backgroundColor": "ansi256:248",
+        "metadata": {
+          "display": "percent"
+        },
+        "rawValue": false,
+        "color": "ansi256:234"
+      },
+      {
         "id": "1a6b72e8-eae7-4dd5-b5cd-a0fd365a70c8",
         "type": "weekly-reset-timer",
         "backgroundColor": "ansi256:176",
