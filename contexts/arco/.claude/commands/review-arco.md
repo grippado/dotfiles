@@ -10,12 +10,12 @@ Skill orquestradora de PR review para o time Arco. Coleta contexto, delega anál
 
 **Out of scope (NUNCA faça sem confirmação explícita):**
 
-- Não rodar `pnpm test` / `pnpm typecheck` / `pnpm lint` / qualquer suite de testes
-- Não fazer commit, push, nem modificar arquivos do repo sob review
+- Não rodar `pnpm test` / `pnpm typecheck` / `pnpm lint` / qualquer suite de testes — EXCETO no modo "aplicar correções" do passo 8 (PR própria), onde rodar a verificação dos arquivos tocados é obrigatório
+- Não fazer commit, push, nem modificar arquivos do repo sob review — EXCETO no modo "aplicar correções" do passo 8 (PR própria), e mesmo aí só após o usuário escolher essa opção
 - Não aprovar nem mergear (`gh pr review --approve`, `gh pr merge`)
-- Não escrever em lugar nenhum exceto o arquivo final no vault E (opcionalmente) a review da PR via `gh api` no passo 8
+- Não escrever em lugar nenhum exceto: o arquivo final no vault; (opcionalmente) a review da PR via `gh api` no passo 8; e, no modo "aplicar correções", os arquivos de código + commit na branch da PR própria
 
-**Sobre postar na PR:** após gravar o arquivo no Obsidian (passo 6), o passo 8 oferece opções via `AskUserQuestion` para postar um subset dos comentários inline. Nunca postar sem o usuário escolher uma opção positiva.
+**Sobre o passo 8:** após gravar o arquivo no Obsidian (passo 6), o passo 8 oferece, via `AskUserQuestion`, a ação pós-review. O menu MUDA conforme a PR seja **de terceiros** (postar comentários inline) ou **do próprio Gabriel** (aplicar as correções recomendadas em commits semânticos). Nunca agir sem o usuário escolher uma opção positiva.
 
 ## Inputs aceitos
 
@@ -67,6 +67,17 @@ Buscar nome humano do autor:
 gh api users/{login} --jq .name
 # se vier null/vazio, usa só o login
 ```
+
+Detectar se a PR é **do próprio Gabriel** (decide o menu do passo 8). Buscar também o assignee:
+
+```bash
+ME=$(gh api user -q .login)                                              # login do usuário logado
+gh pr view $PR_NUMBER --repo $REPO_FULL --json author,assignees \
+  -q '{author: .author.login, assignees: [.assignees[].login]}'
+# IS_OWN_PR = true se ME == author.login OU ME estiver em assignees
+```
+
+Guardar `IS_OWN_PR` (bool) e `ME`. Para branch local sem PR aberta, tratar como própria (`IS_OWN_PR = true`).
 
 Para branch local (sem PR):
 
@@ -209,9 +220,33 @@ Veredito: {STATUS} — {1 frase do veredito}.
 
 Em seguida, vá direto para o passo 8 (sem esperar input adicional do usuário). Se o review **não tem PR number** (branch local sem PR aberta) ou se o subagent não retornou nenhum comentário 🔴/🟡/🔵/🟢/⚠️ acionável, **pule o passo 8** — apenas terminar.
 
-### 8. Oferecer publicação inline na PR
+### 8. Oferecer ação pós-review (aplicar ou publicar)
 
-Se há PR aberta e comentários acionáveis no review, perguntar via `AskUserQuestion` (uma única question, single-select):
+Se há PR aberta e comentários acionáveis no review, perguntar via `AskUserQuestion` (uma única question, single-select). **O conjunto de opções depende de `IS_OWN_PR`** (passo 3): em PR própria, o padrão é aplicar as correções; em PR de terceiros, o padrão é postar inline.
+
+#### 8a. PR do próprio Gabriel (`IS_OWN_PR == true`)
+
+Postar comentário pra si mesmo não agrega; o valor é aplicar a correção. Antes de perguntar, se a PR ainda não tiver o Gabriel como assignee, atribuir:
+
+```bash
+gh pr edit $PR_NUMBER --repo $REPO_FULL --add-assignee "$ME"
+```
+
+Perguntar:
+
+- **Header:** `Ação na PR?`
+- **Question:** `A PR #{number} é sua. O que fazer com as recomendações do review?`
+- **Options (nessa ordem):**
+  1. `🛠️ Aplicar correções em commits semânticos (Recomendado)` — descrição: `Aplica os 🔴 + 🟡 + 🔵 acionáveis no working tree, roda a verificação dos arquivos tocados, e commita semanticamente. Não posta nada. Sem push automático.`
+  2. `Aplicar e dar push` — descrição: `Igual acima, e ao final dá push na branch da PR.`
+  3. `Postar comentários inline` — descrição: `Em vez de aplicar, posta o review na PR (mesmo menu de PR de terceiros). Útil pra registrar sem mexer no código agora.`
+  4. `Não fazer nada` — descrição: `Review fica só no Obsidian. Você decide depois.`
+
+Se escolher 1 ou 2 → ir para **8c**. Se escolher 3 → usar a postagem de **8b**. Se 4 → terminar.
+
+#### 8b. PR de terceiros (`IS_OWN_PR == false`) — publicar inline
+
+Perguntar via `AskUserQuestion` (single-select):
 
 - **Header:** `Postar na PR?`
 - **Question:** `Quer postar algum subset dos comentários direto na PR #{number}?`
@@ -261,6 +296,22 @@ Review postada: {html_url}
 ```
 
 Se o usuário escolher "Não postar" ou cancelar a question, apenas terminar (sem mensagem extra).
+
+#### 8c. Aplicar correções (modo PR própria)
+
+Aplicar no working tree as correções **acionáveis** do review: 🔴 (obrigatórias), 🟡 (necessárias) e 🔵 (sugestões) que sejam mudança concreta de código. **Pular** 🟢 (elogios), 💭 (notas internas) e itens que sejam só "considerar/avaliar" sem ação definida.
+
+Regras:
+
+- **Verificar antes de aplicar:** cada finding deve ser confirmado contra o código real (o `arco-pr-reviewer` gera falsos positivos). Se um item for improcedente na verificação, NÃO aplicar, e registrar no resumo final por que foi pulado. Se for uma decisão de design genuinamente ambígua (trade-off real), perguntar ao usuário em vez de chutar.
+- **3-file gate (regra do arco):** se as correções tocarem **mais de 3 arquivos**, NÃO edite direto — delegue a um agente de implementação (`general-purpose` ou específico) com instruções precisas: arquivos, edições exatas, comandos de verificação e mensagem(ns) de commit. Para ≤3 arquivos, pode aplicar direto.
+- **Verificação obrigatória** nos arquivos tocados, antes de commitar: typecheck + lint + os testes unitários afetados. Respeitar a versão de Node pinada do repo (`.nvmrc` via fnm/nvm) quando houver. Se algum gate falhar por motivo ambiental (registry/auth/deps faltando), confirmar que é idêntico ao baseline `main` e registrar; se falhar por causa da mudança, corrigir antes de commitar.
+- **Commits semânticos:** Conventional Commits + emoji, PT-BR com acentuação correta. Agrupar por tema (um commit por finding ou por grupo coerente, a critério). Trailer **obrigatório** `Co-Authored-By: Claude <noreply@anthropic.com>` via HEREDOC. Se o repo tiver hook (husky/lint-staged) quebrado por ambiente, usar `--no-verify` e registrar o motivo.
+- **Push:** só na opção 2 (Aplicar e dar push), e só na branch `headRefName` da PR (nunca `main`). Opção 1 deixa os commits locais.
+- **Nunca** postar comentário, aprovar nem mergear neste modo.
+- **Atualizar a descrição da PR** quando a correção mudar materialmente o que a PR faz (ex.: removeu/alterou algo descrito no corpo): editar via `gh pr edit $PR_NUMBER --repo $REPO_FULL --body-file <arquivo>`. Manter sem em-dashes (texto externo).
+
+Resposta no chat ao final: tabela curta `{finding | aplicado/pulado | arquivos}`, depois `{commit(s) SHA, resultado da verificação, e range de push se houve}`. Sinalizar findings pulados (improcedentes/ambíguos) e o que precisa de decisão do usuário.
 
 ## Notas finais
 
