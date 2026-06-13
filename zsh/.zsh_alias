@@ -191,5 +191,10 @@ alias claude-raw="command claude"
 alias scc="brain-sync && claude --dangerously-skip-permissions"
 alias cc="brain-sync && claude"
 
+#GUIA CUMURU (API na VPS hq, systemctl --user)
+alias gc-logs="ssh -t hq 'journalctl --user -u guia-cumuru-api.service -f -n 50'"
+alias gc-logs-recent="ssh hq 'journalctl --user -u guia-cumuru-api.service -n 200 --no-pager'"
+alias gc-status="ssh hq 'systemctl --user status guia-cumuru-api.service --no-pager'"
+
 # Load local/org-specific aliases if available
 [ -f "$HOME/.zsh_aliases_local" ] && source "$HOME/.zsh_aliases_local"
