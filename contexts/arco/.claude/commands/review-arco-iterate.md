@@ -24,8 +24,9 @@ Roda independente dos outros. Pensado para PRs com rodadas do bot `arco-pr-revie
 | `/review-arco-iterate 962` | PR #962 do repo do `pwd` atual |
 | `/review-arco-iterate https://github.com/classapp/communication-api/pull/962` | PR do URL informado |
 | `/review-arco-iterate 962 --auto` | Pula a confirmação e executa o fluxo completo direto (default da confirmação = "postar tudo") |
+| `/review-arco-iterate 962 --watch` | Roda a 1ª rodada e **fica vivo** monitorando novas rodadas do bot + o CI da PR até ela assentar/mergear (ver "Modo WATCH") |
 
-A flag `--auto` pode aparecer junto com qualquer forma acima.
+As flags `--auto` e `--watch` podem aparecer junto com qualquer forma acima e entre si. `--watch` **implica `--auto`** em todas as rodadas (a sessão fica desacompanhada; não há ninguém para confirmar).
 
 ## Ordem de execução OBRIGATÓRIA (NÃO reordenar)
 
@@ -246,9 +247,86 @@ O GitHub renderiza markdown nas réplicas. NÃO postar identificadores e código
 
 > Antifrase do dogfooding (PR #962): a réplica saiu correta no conteúdo mas em plain text (`linha 1467`, `MIN(id)`, `cea2.event_id`, nome do arquivo cru). O esperado é `` `MIN(id)` ``, `` [`messages.get-by-user.repository.ts:1467`](permalink) ``, etc.
 
+---
+
+## Modo WATCH (`--watch`)
+
+> Sem `--watch`, o comando roda **uma passada e termina** (ver Notas finais). Com `--watch`, ele faz a 1ª passada normalmente e **fica vivo** monitorando a PR até ela assentar ou mergear, para não deixar a rodada morrer nem esquecer que precisa ser fechada.
+
+### Quando o usuário pediu
+Cenário típico: o usuário fechou a 1ª rodada de threads e **vai sair**. Quer que o comando:
+1. Pegue automaticamente as **próximas rodadas** do bot `arco-pr-reviewer` (que costuma recomentar depois do push) e as feche sem intervenção.
+2. **Monitore o CI** da PR (GitHub Actions) e avise/aja quando quebrar.
+3. Não esqueça: mantenha a sessão acordada com cadência sã até a PR assentar.
+
+`--watch` **implica `--auto`**: cada rodada subsequente aplica + posta + resolve + commita + pusha sozinha (assume a opção 1 da confirmação). Verificação contra o código real continua **obrigatória** em toda rodada, watch não relaxa o rigor anti-falso-positivo.
+
+### Estado persistente (não esquecer entre wakes)
+Mantenha um arquivo de estado por PR para sobreviver aos `ScheduleWakeup` e às janelas de contexto. Caminho: `.git/arco-watch-pr-<PR_NUMBER>.json` no checkout (fica fora do versionamento, dentro de `.git/`). Campos:
+
+```json
+{
+  "pr": 962,
+  "repo": "OlaIsaac/communication-api",
+  "headRefName": "feat/...",
+  "round": 1,
+  "resolvedThreadIds": ["PRRT_..."],
+  "lastHeadSha": "abc123",
+  "lastCiConclusion": "success|failure|pending|null",
+  "quietTicks": 0,
+  "startedAt": "<ISO>",
+  "lastTickAt": "<ISO>"
+}
+```
+
+Na 1ª passada, grave o estado inicial (round 1, threads que você resolveu, SHA pós-push). Em cada tick, leia, atualize e regrave. Se o arquivo sumir (ex.: sessão reiniciada), reconstrua o `resolvedThreadIds` a partir das threads atualmente `isResolved == true` de sua autoria.
+
+### O loop de watch (cada tick)
+Após a 1ª passada (e a cada wake), execute UM tick:
+
+1. **Estado da PR.** `gh pr view $PR_NUMBER --repo $REPO_FULL --json state,merged,headRefOid,isDraft`.
+   - `merged == true` ou `state == "CLOSED"` → **encerrar o watch** com relatório final. Não pushar mais nada.
+2. **CI.** `gh pr checks $PR_NUMBER --repo $REPO_FULL --json name,state,conclusion,link` (ou `gh pr checks` simples se o JSON não vier). Classifique o agregado:
+   - `pending`/`in_progress` → CI rodando, ainda não decidiu.
+   - todos `success`/`neutral`/`skipped` → **verde**.
+   - qualquer `failure`/`timed_out`/`cancelled` → **vermelho**.
+3. **Threads novas.** Rode o GraphQL `reviewThreads` do passo 2. Compute o delta: threads `isResolved == false` cujo `id` (PRRT) **não** está em `resolvedThreadIds` do estado, e que não sejam triviais (mesma regra de "pular triviais"). Esse delta é a **nova rodada**.
+
+#### Decisão do tick (em ordem de prioridade)
+- **Nova rodada de threads (delta não vazio)** → execute o fluxo normal (passos 3 a 8) **só sobre as threads do delta**, com `--auto`. Ao terminar: `round += 1`, adicione os PRRT recém-resolvidos a `resolvedThreadIds`, atualize `lastHeadSha`, zere `quietTicks`. Emita evento Slack `nova-rodada-fechada` (ver "Hook Slack").
+- **CI vermelho** (e sem delta de threads) → colete o porquê: `gh pr checks` para achar o check que falhou e `gh run view <run-id> --repo $REPO_FULL --log-failed` (pegue o `run-id` pelo `link`/`databaseId` do check). 
+  - Se a causa for **claramente** atribuível ao seu último push e dentro do escopo das correções (ex.: typecheck/lint/teste que você mexeu quebrou), tente **uma** correção, rode o quality gate local, e se passar, commite + pushe (mesma branch). Emita evento `ci-corrigido-tentativa`.
+  - Caso contrário (falha de infra, flaky, teste não relacionado, mudança de base) → **não** mexa no código. Registre, emita evento `ci-vermelho` com link do log, e siga monitorando. Não fique tentando corrigir em loop: no máximo **uma** tentativa de auto-fix por SHA.
+- **CI verde + sem delta de threads** → `quietTicks += 1`. Emita `ci-verde` apenas na **transição** (quando `lastCiConclusion != success`).
+- **CI pending + sem delta** → não faz nada além de aguardar (não conta como quiet tick).
+
+Atualize sempre `lastCiConclusion` e `lastTickAt` no estado.
+
+#### Condições de saída (encerrar o watch)
+- PR mergeada ou fechada.
+- **Assentou**: CI verde **e** zero threads abertas por **2 ticks consecutivos** (`quietTicks >= 2`). A PR está pronta para review humano/merge; o watch cumpriu o papel.
+- Limite de segurança: `round > 8` ou watch ativo há mais de ~6h sem assentar → encerre avisando que passou do esperado (provável discussão humana travada ou CI cronicamente vermelho) e peça olhada manual.
+- Usuário interrompe a sessão.
+
+Em qualquer saída, **relatório final** no chat: rodadas fechadas, estado final do CI (com link se vermelho), threads humanas deixadas em `needs-discussion`, e o range de commits pushados durante o watch.
+
+### Cadência (escolha do `delaySeconds` do próximo wake)
+Use `ScheduleWakeup` ao fim de cada tick para reabrir a sessão. A escolha do intervalo segue as janelas de cache (TTL ~5 min):
+- **CI rodando** ou **acabei de fechar uma rodada** (espero recomentário rápido do bot): **270s** (mantém o cache quente; é o que muda rápido).
+- **CI verde, aguardando assentar** (quiet ticks): **1200s** (~20 min). Não há o que checar antes disso; paga o cache miss uma vez e espera mais.
+- **CI vermelho aguardando resolução externa**: **1200s**. Já reportei; só re-checo se mudou.
+- Nunca 300s (pior dos dois mundos). O `reason` do wake deve ser específico: "watch PR #962: CI rodando pós-push, re-checo em 270s".
+
+Passe o **mesmo input** (`/review-arco-iterate <pr> --watch`) de volta no `prompt` do `ScheduleWakeup`, para o próximo firing reentrar no watch. Omita o `ScheduleWakeup` apenas nas condições de saída.
+
+### Hook Slack (feed de status, opcional)
+Se o feed de PRs no Slack estiver configurado (ver plano em `~/.notes/1-contexts/arco/plans/*-slack-pr-status-feed.md`), emita uma atualização a cada **transição** relevante: `nova-rodada-fechada`, `ci-vermelho`, `ci-corrigido-tentativa`, `ci-verde`, `assentou`, `mergeada`. Use o updater do feed (canvas vivo + ping no thread). Se o feed não estiver configurado, **pule silenciosamente** o hook, o watch funciona sem ele.
+
+---
+
 ## Notas finais
 
-- Verificação vem antes de tudo: nunca aceitar um comentário do bot sem confirmar a alegação no código real.
-- Roda UMA passada e termina. Não fica em loop esperando a próxima rodada do bot — se o bot comentar de novo, o usuário invoca o comando outra vez.
+- Verificação vem antes de tudo: nunca aceitar um comentário do bot sem confirmar a alegação no código real. Vale igual dentro do modo WATCH.
+- **Sem `--watch`**: roda UMA passada e termina. Não fica em loop esperando a próxima rodada do bot — se o bot comentar de novo, o usuário invoca o comando outra vez. **Com `--watch`**: fica vivo monitorando até a PR assentar/mergear (ver "Modo WATCH").
 - Se `gh` não estiver autenticado, pedir `gh auth login` e abortar.
 - Se o quality gate falhar (typecheck/lint/teste), **não** avançar para postar/pushar: reportar a falha e parar para o usuário decidir.
