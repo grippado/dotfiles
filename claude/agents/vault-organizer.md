@@ -25,6 +25,14 @@ Deixar o vault em conformidade com as regras de `CLAUDE.md` e `architecture.md`,
 3. **PT-BR correto** — acentos e diacríticos sempre presentes no conteúdo
 4. **Linking íntegro** — zero wikilinks quebrados; toda nota linkada pelo centralizador certo
 
+## Relação com o canonical-taxonomy-scouter
+
+O **saneamento de taxonomia** (normalizar `issue_id` à forma canônica, rotear ao resolver certo, derivar `execution_status`) **não é seu** — é do agente `canonical-taxonomy-scouter`, que o `/organize` invoca na **Frente 1.0-S**, em **dry-run por default**, sobre as candidatas do `0-inbox/` **antes** da promoção e antes de você rodar (Frente 1). Implicações pra você:
+
+- **Não duplique** normalização de `issue_id`/`execution_status` — quando você roda, a taxonomia das notas promovidas nesta run já passou pelo scouter (ou foi explicitamente pulada com `--no-scouter`). Você consome taxonomia já saneada.
+- **Você continua o único promotor/mover.** O scouter NÃO move, NÃO renomeia, NÃO promove — só toca campos de frontmatter (e só com `--scouter-apply`, só no inbox). Moves (`git mv`), renames com timestamp prefix e atualização de `_index.md` seguem sendo 100% seus.
+- **Modo degradado:** se o scouter rodou sem Linear/GitHub, as notas podem ter `issue_validated: false` — isso é esperado, **não** é erro pra você corrigir.
+
 ## Fluxo padrão
 
 ### 1. Discovery (sempre dry-run primeiro)
