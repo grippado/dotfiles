@@ -592,8 +592,9 @@ function wsync() {
     return 1
   fi
 
-  local total=0 cloned=0 pulled=0 up_to_date=0 auto_switched=0 skipped=0 failed=0
+  local total=0 cloned=0 pulled=0 rebased=0 up_to_date=0 auto_switched=0 skipped=0 failed=0
   local -a attention=()
+  local -a needfix=()
   local has_gh=0
   command -v gh >/dev/null 2>&1 && has_gh=1
   while IFS=$'\t' read -r slug url; do
@@ -749,6 +750,39 @@ function wsync() {
     [ -n "$(git -C "$target" status --porcelain 2>/dev/null)" ] && dirty=1
     _wsv "🧹 dirty    $dirty"
 
+    # Diverged: both local and remote moved. Typical for machine-synced repos
+    # (ai-memory-sync, notes) where commits on different boxes touch different
+    # files. Try to auto-rebase local commits onto origin; if it conflicts for
+    # real, abort cleanly and hand the repo off to the agentic-fix prompt.
+    if [ "$ahead_count" -gt 0 ] && [ "$behind_count" -gt 0 ]; then
+      echo "[wsync] 🔄 rebase    $slug  (diverged: +$ahead_count local / -$behind_count remote)"
+      if [ "$dirty" -eq 1 ]; then
+        _wsv "📦 stash    saving local changes..."
+        if ! git -C "$target" stash push -u -m "wsync auto-stash $(date +%Y%m%d-%H%M%S)" >/dev/null; then
+          echo "        ❌ stash failed, skipping"
+          failed=$((failed + 1))
+          needfix+=("$slug	$target	$default	$branch	stash failed before rebase ($ahead_count local / $behind_count remote)")
+          continue
+        fi
+      fi
+      if git -C "$target" rebase --quiet "origin/$default" 2>/dev/null; then
+        echo "        ✅ rebased $ahead_count local commit(s) onto origin/$default"
+        rebased=$((rebased + 1))
+      else
+        git -C "$target" rebase --abort >/dev/null 2>&1
+        echo "        ❌ rebase conflicted — left untouched, queued for agentic fix"
+        failed=$((failed + 1))
+        needfix+=("$slug	$target	$default	$branch	rebase conflict ($ahead_count local / $behind_count remote)")
+      fi
+      if [ "$dirty" -eq 1 ]; then
+        git -C "$target" stash pop >/dev/null 2>&1 || {
+          echo "        ⚠️  stash pop conflicted, check 'git stash list' in $target"
+          attention+=("⚠️  $slug — stash pop conflict in $target")
+        }
+      fi
+      continue
+    fi
+
     echo "[wsync] ⬇️  pull      $slug  ($branch, behind $behind_count)"
     if [ "$dirty" -eq 1 ]; then
       _wsv "📦 stash    saving local changes..."
@@ -764,7 +798,7 @@ function wsync() {
     else
       echo "        ❌ pull failed (non-ff or network)"
       failed=$((failed + 1))
-      attention+=("❌ $slug — pull failed (non-ff: local commits diverge from remote)")
+      needfix+=("$slug	$target	$default	$branch	pull --ff-only failed (non-ff or network)")
     fi
 
     if [ "$dirty" -eq 1 ]; then
@@ -781,6 +815,7 @@ function wsync() {
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   printf "  ✅ up-to-date   %3d\n" "$up_to_date"
   printf "  ⬇️  pulled       %3d\n" "$pulled"
+  printf "  🔄 rebased      %3d\n" "$rebased"
   printf "  🔀 switched     %3d\n" "$auto_switched"
   printf "  🆕 cloned       %3d\n" "$cloned"
   printf "  ⏭️  skipped      %3d\n" "$skipped"
@@ -794,6 +829,39 @@ function wsync() {
     for line in "${attention[@]}"; do
       echo "  $line"
     done
+  fi
+
+  # Repos wsync could not reconcile mechanically (real conflicts / network).
+  # Emit a ready-to-paste prompt so an agent (Claude Code, Cursor, …) can fix
+  # them with full repo context. Copy everything between the ✂ markers.
+  if [ ${#needfix[@]} -gt 0 ]; then
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "🤖 agentic fix needed  (${#needfix[@]}) — paste the block below into Claude Code / Cursor"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "✂─────────────────────────────────────────────────────────────────────────✂"
+    echo "wsync não conseguiu sincronizar mecanicamente os repos abaixo. Resolva cada um"
+    echo "com cuidado, preservando os commits locais E os remotos (são máquinas diferentes,"
+    echo "normalmente sem conflito real de conteúdo). Para cada repo:"
+    echo ""
+    echo "  1. cd no path, rode 'git status' e 'git log --oneline --graph --all -20'"
+    echo "  2. tente 'git rebase origin/<default>'; se conflitar, resolva os arquivos"
+    echo "     mantendo as duas intenções (na dúvida, pare e me pergunte)"
+    echo "  3. se for repo de conteúdo gerado (ai-memory-sync, notes), favoreça a união"
+    echo "     dos dois lados em vez de descartar qualquer lado"
+    echo "  4. ao final, 'git status' deve estar limpo e 'git log' linear com origin"
+    echo "  NÃO faça push — só deixe o working tree limpo e sincronizado localmente."
+    echo ""
+    echo "Repos:"
+    local nf slug_ path_ default_ branch_ reason_
+    for nf in "${needfix[@]}"; do
+      IFS=$'\t' read -r slug_ path_ default_ branch_ reason_ <<< "$nf"
+      echo "  • $slug_"
+      echo "      path:    $path_"
+      echo "      branch:  $branch_   (default: $default_)"
+      echo "      problem: $reason_"
+    done
+    echo "✂─────────────────────────────────────────────────────────────────────────✂"
   fi
 }
 # deck2pdf <url> [output.pdf] [size]
