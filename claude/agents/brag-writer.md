@@ -62,14 +62,23 @@ Todas as evidências já vêm filtradas pelo orchestrator pra o dia/mês alvo. S
 ---
 date: "YYYY-MM-DD"
 type: brag-daily
+execution_status: done
 tags: [brag, carreira, pdi, l11-l12]
 parent: "[[_index]]"
 month: "YYYY-MM"
 last_updated: "YYYY-MM-DD HH:MM"
 entries_count: <N>
 mode: "<incremental>"
+provenance:
+  machine: "<$DOTFILES_AI_MACHINE ou 'personal'>"
+  hostname: "<hostname -s>"
+  generator: "brag-build"
+  invocation: "/brag-build <args>"
+  captured_at: "<ISO8601 com timezone>"
 ---
 ```
+
+> `execution_status: done` é fixo: o brag é registro de algo que já ocorreu (born_done, `default_state: done` no schema do type `brag-daily`), não tarefa de execução pendente. `provenance` entra porque o brag é doc gerado por máquina (via `/brag-build` → este agent). O brag-doc é eixo terminal próprio (`7-brag-doc/`), NÃO vai pro `0-inbox/` nem leva `pending_organize` — não é roteado pelo /organize.
 
 ### Corpo (leve, escopo de 1 dia)
 
@@ -104,6 +113,7 @@ mode: "<incremental>"
 ---
 month: "YYYY-MM"
 type: brag-monthly
+execution_status: done
 tags: [brag, carreira, pdi, l11-l12]
 parent: "[[_index]]"
 period_covered: "YYYY-MM-01 → YYYY-MM-<último-dia>"  # "→ today" se for o mês corrente em consolidação live
@@ -112,8 +122,16 @@ pdi_link: "[[2026-03-11-pdi-2026-1-staff-para-senior-staff]]"
 entries_count: <N>
 mode: "<consolidate | regen | bootstrap>"
 source: "<dailies | pools>"
+provenance:
+  machine: "<$DOTFILES_AI_MACHINE ou 'personal'>"
+  hostname: "<hostname -s>"
+  generator: "brag-build"
+  invocation: "/brag-build <args>"
+  captured_at: "<ISO8601 com timezone>"
 ---
 ```
+
+> Mesmo racional do diário: `execution_status: done` (born_done) + `provenance` (doc gerado por máquina). Consolidado mensal também é eixo terminal (`7-brag-doc/`), sem `pending_organize`.
 
 ### Corpo
 
