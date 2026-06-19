@@ -35,18 +35,20 @@ Persiste o contexto da sessão atual (conversa + agents que rodaram) como nota n
      - Com match → já tem nota, ignorar
    - Limitar a 5 sessões órfãs (evitar explosão de contexto). Se houver mais, listar e perguntar quais incluir.
 
-3. **Detectar contexto sugerido** (main thread):
+3. **Detectar contexto + tipo canônico** (main thread):
    - `pwd` + `git remote get-url origin 2>/dev/null` (best-effort, ignorar erro)
-   - Mapeamento (mesmo do `/plan-save`):
-     - cwd sob `~/www/isaac/*` → `suggested_context: arco` (subcontexto: nome do repo se houver convenção, senão deixar vazio)
-     - cwd sob `~/www/personal/<repo>` → `suggested_context: pessoal/<repo>` (flagbridge, vozes, opengateway, guia-cumuru, gripp-link)
-     - cwd em outro lugar (incluindo `~`) → `suggested_context: ""` (deixar pro /organize decidir/perguntar)
-   - Subtipo inferido pelo tipo de trabalho:
-     - Decisão arquitetural / trade-off resolvido → `decision`
-     - Bug investigado → `bug-hunt`
-     - Refactor / cleanup → `refactor`
-     - Exploração / pergunta aberta / spike → `exploration`
-     - Default → `session`
+   - **Contexto** (melhor chute — o produtor commita o que sabe; `/organize` valida/move depois via `pending_organize`):
+     - cwd sob `~/www/isaac/*` → `context: arco`
+     - cwd sob `~/www/personal/<repo>` → `context: pessoal/<repo>` (flagbridge, vozes, opengateway, guia-cumuru, gripp-link)
+     - cwd em outro lugar (incluindo `~`) → `context: ""` (vazio; deixar pro /organize decidir/perguntar)
+   - **`type` canônico** (do enum do schema v2, eixo por tipo) inferido pelo tipo de trabalho. O `type` substitui o antigo `suggested_subtype` — o roteamento agora é por tipo:
+     - Decisão arquitetural / trade-off resolvido → `type: decision` (`default_state: done`)
+     - Bug investigado → `type: analysis` (`default_state: open`)
+     - Exploração / pergunta aberta / spike → `type: analysis` (`default_state: open`)
+     - Refactor / cleanup / sessão de trabalho → `type: thread` (`default_state: open`)
+     - Default → `type: thread` (`default_state: open`)
+   - **`execution_status`** = o `default_state` do `type` escolhido (regra acima, vinda de `lifecycle[type].default_state` no schema). NÃO inferir estado da execução além do default — o produtor é semi-burro, o estado fino é do scouter/organize.
+   - **NÃO inferir `issue_id`/`related_issues`** — identidade é responsabilidade do `canonical-taxonomy-scouter` na Frente 1.0 do `/organize`. O produtor não toca isso.
 
 4. **Derivar slug**:
    - Se `$ARGUMENTS` foi passado, usar ele (kebab-case, sem timestamp)
@@ -57,20 +59,34 @@ Persiste o contexto da sessão atual (conversa + agents que rodaram) como nota n
    ```
    Crie nota em ~/.notes/0-inbox/YYYY-MM-DD-HHMM-<slug>.md (NÃO sobrescrever se existir — incrementar HHMM).
 
-   Frontmatter (exatamente este shape):
+   Frontmatter (exatamente este shape — esqueleto v2, schema-aware):
      ---
      date: "YYYY-MM-DD"
      time: "HH:MM"
-     type: context-save
-     tags: [context-save, pending-organize]
+     type: "<decision | analysis | thread — o canônico decidido no passo 3>"
+     context: "<arco | pessoal/flagbridge | pessoal/vozes | ... | vazio>"
+     execution_status: "<default_state do type: done p/ decision, open p/ analysis/thread>"
      pending_organize: true
-     suggested_context: "<arco | pessoal/flagbridge | pessoal/vozes | ... | vazio>"
-     suggested_subtype: "<decision | bug-hunt | refactor | exploration | session>"
-     session_sources: ["<paths absolutos dos .jsonl varridos>"]
-     cwd: "<pwd>"
-     branch: "<git branch ou vazio>"
+     tags: [<2-5 tags de conteúdo, ASCII, sem acento; SEM 'context-save'/'pending-organize'>]
+     parent: "[[_index]]"
      brag_worthy: <true | false>
+     provenance:
+       machine: "<$DOTFILES_AI_MACHINE ou 'personal'>"
+       hostname: "<hostname -s>"
+       cwd: "<pwd>"
+       branch: "<git branch atual ou vazio>"
+       invocation: "/context-save <args>"
+       generator: "context-save"
+       captured_at: "<ISO8601 com timezone, ex: 2026-06-19T14:30:00-03:00>"
+       session_sources: ["<paths absolutos dos .jsonl varridos>"]
      ---
+
+   Regras do frontmatter (semi-burro):
+   - `type` é o canônico do enum (NÃO `context-save` nem `session`); `context` é o melhor chute (pode ser vazio).
+   - `execution_status` = `default_state` do `type` (não inferir além disso).
+   - `pending_organize: true` SEMPRE — é o sinal pro /organize rotear e pro scouter resolver identidade.
+   - `provenance` é o bloco de metadado de máquina (porque é doc gerado): machine/hostname/cwd/branch/invocation/generator/captured_at/session_sources.
+   - **NÃO** emitir `issue_id`/`related_issues`/`issue_validated` — identidade é do scouter (Frente 1.0 do /organize).
 
    Seções (PT-BR com acentuação correta, tom executivo sem narração):
 
@@ -107,14 +123,15 @@ Persiste o contexto da sessão atual (conversa + agents que rodaram) como nota n
 
 6. **Reportar ao usuário**:
    - Path absoluto da nota criada
-   - `suggested_context` e `suggested_subtype` que foram inscritos
+   - `type` canônico, `context` (chute) e `execution_status` que foram inscritos
    - Quantas sessões órfãs foram incluídas
-   - Sugestão: "Rode `/organize` quando quiser processar o inbox e mover pro contexto certo"
+   - Sugestão: "Rode `/organize` quando quiser processar o inbox (rotear pro contexto + scouter resolver `issue_id`)"
 
 ## Rules
 
 - **NÃO** criar `.md` no repo de trabalho — sempre em `~/.notes/0-inbox/`
 - **NÃO** mover a nota pra `1-contexts/` aqui — isso é trabalho do `/organize`
+- **NÃO** rotear fino nem resolver identidade aqui: o produtor é **semi-burro** — emite o esqueleto v2 (type canônico + context-chute + execution_status default + provenance + pending_organize) e deixa `issue_id`/roteamento pro scouter/organize
 - **NÃO** remover `pending_organize: true` aqui — flag é consumida pelo `/organize`
 - Se já existe nota com mesmo timestamp+slug, incrementar HH:MM (não sobrescrever)
 - Acentuação PT-BR obrigatória no conteúdo (slug e tags ficam ASCII)
