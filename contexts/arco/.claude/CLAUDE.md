@@ -30,7 +30,7 @@
 - **Acentuação PT-BR**: sempre correta (é, ã, ç, ê, ó) — vale para código (i18n strings), comentários e PR descriptions
 - **Stack majoritária**: TypeScript / Go / Terraform
 - **CI**: GitHub Actions
-- **Notes/decisões**: persistir em `~/.notes/1-contexts/arco/`
+- **Notes/decisões**: persistir no eixo por tipo na raiz do vault — `~/.notes/pr-reviews/`, `~/.notes/decisions/`, `~/.notes/meetings/`, etc. (o contexto `arco` viaja no frontmatter, campo `context`, não como pasta)
 
 ## Modos de trabalho (IMPORTANTE)
 

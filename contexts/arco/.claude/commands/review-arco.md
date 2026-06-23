@@ -1,6 +1,6 @@
 ---
 name: review-arco
-description: Revisa uma PR (ou branch atual vs main) no contexto Arco/OlaIsaac e persiste o review como arquivo .md no Obsidian vault em ~/.notes/1-contexts/arco/pr-reviews/<repo>/
+description: Revisa uma PR (ou branch atual vs main) no contexto Arco/OlaIsaac e persiste o review como arquivo .md no Obsidian vault em ~/.notes/pr-reviews/ (contexto arco no frontmatter)
 user_invocable: true
 ---
 
@@ -117,9 +117,9 @@ Convenção:
   - Exemplo: `2026-04-30-backoffice-bff-cma-2400-feature-x.md`
   - branch-slug = nome da branch em kebab-case, sem prefixos como `feat/`, `fix/`
 
-Path completo: `$NOTES_VAULT/1-contexts/arco/pr-reviews/{repo-slug}/{filename}`
+Path completo: `$NOTES_VAULT/pr-reviews/{filename}`
 
-> **Estrutura por repo:** desde 2026-05-08, PR reviews vivem em subpastas por repositório (`pr-reviews/communication-api/`, `pr-reviews/rf-monorepo/`, etc.). Crie a subpasta se não existir. Reviews que não se encaixam em um repo único (DRTs, análises cross-cutting) ficam no root `pr-reviews/`.
+> **Eixo achatado:** desde o flattening do vault, PR reviews vivem todas em `pr-reviews/` na raiz — o repo já está embutido no nome do arquivo (`{repo-slug}-PR{number}`). O contexto (`arco`) viaja no frontmatter (campo `context`), não como subpasta.
 
 **Re-runs no mesmo dia:**
 
@@ -138,6 +138,7 @@ date: {YYYY-MM-DD}
 pr_url: "{url ou 'N/A — local branch'}"
 pr_number: {number ou null}
 repo: "{repo-slug}"
+context: arco
 author: "{gh-login}"
 status: {status do subagent}
 tags: [pr-review, {repo-slug}, {area-tag-opcional}, {ticket-slug-lowercase}, {TICKET-XXX}]
