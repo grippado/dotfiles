@@ -13,9 +13,9 @@ Skill orquestradora de PR review para o time Arco. Coleta contexto, delega anál
 - Não rodar `pnpm test` / `pnpm typecheck` / `pnpm lint` / qualquer suite de testes — EXCETO no modo "aplicar correções" do passo 8 (PR própria), onde rodar a verificação dos arquivos tocados é obrigatório
 - Não fazer commit, push, nem modificar arquivos do repo sob review — EXCETO no modo "aplicar correções" do passo 8 (PR própria), e mesmo aí só após o usuário escolher essa opção
 - Não aprovar nem mergear (`gh pr review --approve`, `gh pr merge`)
-- Não escrever em lugar nenhum exceto: o arquivo final no vault; (opcionalmente) a review da PR via `gh api` no passo 8; e, no modo "aplicar correções", os arquivos de código + commit na branch da PR própria
+- Não escrever em lugar nenhum exceto: o arquivo final no vault; (opcionalmente) a review da PR via `gh api` no passo 8; e, no modo "aplicar correções", os arquivos de código + commit na branch da PR própria. O modo "redigir rascunhos de réplica" (passo 8d) também grava um arquivo de rascunhos no vault — mas **nunca posta no GitHub**.
 
-**Sobre o passo 8:** após gravar o arquivo no Obsidian (passo 6), o passo 8 oferece, via `AskUserQuestion`, a ação pós-review. O menu MUDA conforme a PR seja **de terceiros** (postar comentários inline) ou **do próprio Gabriel** (aplicar as correções recomendadas em commits semânticos). Nunca agir sem o usuário escolher uma opção positiva.
+**Sobre o passo 8:** após gravar o arquivo no Obsidian (passo 6), o passo 8 oferece, via `AskUserQuestion`, a ação pós-review. O menu MUDA conforme a PR seja **de terceiros** (postar comentários inline, incluindo a opção de redigir rascunhos de réplica para threads abertas) ou **do próprio Gabriel** (aplicar as correções recomendadas em commits semânticos). Nunca agir sem o usuário escolher uma opção positiva.
 
 ## Inputs aceitos
 
@@ -95,6 +95,50 @@ Se tiver checkout local do repo alvo, também leia:
 - `CLAUDE.md`
 - `.github/PULL_REQUEST_TEMPLATE.md`
 
+### 3b. Histórico de rodadas anteriores e threads existentes
+
+**Rodadas anteriores da mesma PR (vault):**
+
+```bash
+ls ~/.notes/pr-reviews/ \
+  | grep -E "^[0-9]{4}-[0-9]{2}-[0-9]{2}-{repo-slug}-PR{number}(-v[0-9]+)?\.md$" \
+  | sort
+```
+
+Se houver arquivo(s), ler o mais recente e extrair apenas a seção `## Comentários de Review` + frontmatter (`status`, `date`). Guardar como `PREV_REVIEW_COMMENTS`. Se não houver, `PREV_REVIEW_COMMENTS = null`.
+
+**Threads já postadas na PR (abertas e resolvidas):**
+
+```bash
+gh api graphql -f query='
+{
+  repository(owner: "OWNER", name: "REPO") {
+    pullRequest(number: PR) {
+      reviewThreads(first: 100) {
+        nodes {
+          id
+          isResolved
+          isOutdated
+          path
+          line
+          comments(first: 1) {
+            nodes { databaseId url author { login } createdAt body }
+          }
+        }
+      }
+    }
+  }
+}'
+```
+
+Para comentários com body truncado (> 200 chars), buscar o body completo via REST:
+
+```bash
+gh api repos/$REPO_FULL/pulls/comments/<databaseId> -q '.body'
+```
+
+Guardar como `PR_THREADS` (dois conjuntos: `open` + `resolved`). Se a query GraphQL falhar (rate limit, permissão), continuar com `PR_THREADS = null` e avisar no chat.
+
 ### 4. Delegar análise ao subagent
 
 Use a Task tool com `subagent_type: arco-pr-reviewer` passando:
@@ -104,6 +148,8 @@ Use a Task tool com `subagent_type: arco-pr-reviewer` passando:
 - Título + ticket
 - Metadados (repo, autor, branches)
 - Caminho do checkout local se disponível
+- `PREV_REVIEW_COMMENTS`: seção `## Comentários de Review` do review anterior (se houver). Instrução ao subagent: **não repetir findings já cobertos; se sobreposição for inevitável, referenciar com "já apontado em rodada anterior" em vez de repetir o texto**
+- `PR_THREADS`: threads existentes na PR (abertas e resolvidas) com `path`, `line`, `author`, `isResolved` e body completo. Instrução ao subagent: **se um finding cobrir o mesmo ponto de uma thread existente, classificar como `resolved` (se `isResolved == true`) ou referenciar a URL da thread irmã em vez de repetir**
 
 O subagent retorna o relatório estruturado nas seções `SUMARIO`, `COMENTARIOS`, `CHECKLIST`, `VEREDITO`, `STATUS`, `PRIORIDADE`. Você não precisa traduzir nada — só fazer parsing e injetar no template.
 
@@ -125,7 +171,7 @@ Path completo: `$NOTES_VAULT/pr-reviews/{filename}`
 
 - Se já existe o arquivo, sufixar com `-v2`, `-v3`, etc.
   - `2026-04-30-backoffice-bff-PR790-v2.md`
-- Se for review de réplicas/respostas (modo futuro), o sufixo seria `-v1-answers`, `-v2-answers`. Por ora, `/review-arco` puro só usa `-vN`. **Não** implemente lógica de respostas neste comando — fica para um futuro `/review-arco-answer`
+- Se o usuário escolher "Redigir rascunhos de réplica" (passo 8d), o arquivo usa sufixo `-v{N}-answers.md`. O `/review-arco` puro usa só `-vN`.
 
 ### 6. Renderizar template e gravar
 
@@ -256,10 +302,11 @@ Perguntar via `AskUserQuestion` (single-select):
   2. `Só prioridades` — descrição: `Posta 🔴 + ⚠️ + itens da lista PRIORIDADE inline. Sem kudos.`
   3. `Tudo` — descrição: `Posta todos os comentários do review (🔴 🟡 🔵 🟢 ⚠️) inline. 💭 nunca vai.`
   4. `Não postar` — descrição: `Review fica só no Obsidian. Eu reviso antes de decidir.`
+  5. `Redigir rascunhos de réplica` — descrição: `Lê as threads abertas, redige rascunhos de réplica em PT-BR classificados (accepts-suggestion / defends-decision / needs-discussion / needs-code-change) e salva no vault como {repo}-PR{n}-v{N}-answers.md. Não posta nada no GitHub.`
 
 > A opção "Recomendado" é a primeira e tem `(Recomendado)` no label, conforme padrão do tool.
 
-Se o usuário escolher uma opção positiva (1, 2 ou 3), montar a review e postar via `gh api`:
+Se o usuário escolher a opção 5, ir para **8d**. Caso contrário, se o usuário escolher uma opção positiva (1, 2 ou 3), montar a review e postar via `gh api`:
 
 ```bash
 gh api -X POST repos/{owner}/{repo}/pulls/{number}/reviews --input <json-file>
@@ -313,6 +360,36 @@ Regras:
 - **Atualizar a descrição da PR** quando a correção mudar materialmente o que a PR faz (ex.: removeu/alterou algo descrito no corpo): editar via `gh pr edit $PR_NUMBER --repo $REPO_FULL --body-file <arquivo>`. Manter sem em-dashes (texto externo).
 
 Resposta no chat ao final: tabela curta `{finding | aplicado/pulado | arquivos}`, depois `{commit(s) SHA, resultado da verificação, e range de push se houve}`. Sinalizar findings pulados (improcedentes/ambíguos) e o que precisa de decisão do usuário.
+
+#### 8d. Redigir rascunhos de réplica
+
+Usar os `PR_THREADS.open` já coletados no passo 3b. Se `PR_THREADS` for `null` (query falhou no passo 3b), coletar agora com o mesmo query GraphQL.
+
+**Skip threads triviais (independente de flags):**
+- Body só com emoji de aprovação (`:+1:`, `LGTM`, `👍`, `✅`)
+- Comentário do próprio autor da PR sem réplica de outros (não há ninguém pra responder)
+
+Delegar ao subagent `arco-pr-answerer` passando:
+
+- Lista de threads abertas (id, path:line, diff_hunk, cadeia de mensagens, isResolved)
+- Diff atual da PR
+- Metadados: `{owner}/{repo}`, número da PR, autor, branches
+
+O subagent retorna seções: `SUMARIO`, `THREADS`, `RESUMO_ACOES`, `STATUS_GERAL`.
+
+**Nome do arquivo:** `YYYY-MM-DD-{repo-slug}-PR{number}-v{N}-answers.md`
+Re-runs: se já existe `-v1-answers.md`, usar `-v2-answers.md`, e assim por diante.
+Path: `$NOTES_VAULT/pr-reviews/{filename}`
+
+Gravar com Write tool. Resposta no chat:
+
+```
+Rascunhos salvos em {caminho}.
+
+{count} threads endereçados. {breakdown: "3 accepts-suggestion, 1 defends-decision, 1 needs-discussion"}
+```
+
+**Nunca** executar os comandos `gh api ... POST` do output — o arquivo é draft-only para revisão antes de postar.
 
 ## Notas finais
 
