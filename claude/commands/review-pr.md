@@ -1,6 +1,6 @@
 ---
 name: review-pr
-description: Revisa uma PR (ou branch atual vs main) de qualquer repo, delega análise ao agent `pr-reviewer` (com override local do repo se existir), persiste o resultado como arquivo .md no Obsidian vault em ~/.notes/1-contexts/<contexto>/pr-reviews/, e oferece ação pós-review (aplicar correções em PR própria ou postar comentários inline em PR de terceiros).
+description: Revisa uma PR (ou branch atual vs main) de qualquer repo, delega análise ao agent `pr-reviewer` (com override local do repo se existir), persiste o resultado como arquivo .md no Obsidian vault em ~/.notes/pr-reviews/ (contexto no frontmatter), e oferece ação pós-review (aplicar correções em PR própria ou postar comentários inline em PR de terceiros).
 user_invocable: true
 ---
 
@@ -170,21 +170,18 @@ Convenção de **contexto** (subdir em `1-contexts/`):
 
 | Owner | Contexto | Path final |
 |-------|----------|------------|
-| `OlaIsaac`, `classapp` | `arco` | `1-contexts/arco/pr-reviews/{repo}/` |
-| `grippado` (user pessoal do Gabriel) | `{repo}` | `1-contexts/{repo}/pr-reviews/` |
-| outros | `{owner}` | `1-contexts/{owner}/pr-reviews/{repo}/` |
+| `OlaIsaac`, `classapp` | `arco` | `pr-reviews/` |
+| `grippado` (user pessoal do Gabriel) | `{repo}` | `pr-reviews/` |
+| outros | `{owner}` | `pr-reviews/` |
 
-> **Razão**: repos pessoais do Gabriel (grippado/*) já são contextos próprios no vault — `guia-cumuru`, `flagbridge`, `dotfiles-ai`, etc. já existem em `1-contexts/`. Repos de orgs ficam agrupados pelo owner.
+> **Razão**: desde o flattening do vault (eixo por tipo na raiz), todas as PR reviews vivem em `pr-reviews/` na raiz — o repo já está embutido no nome do arquivo. O **contexto** (`arco`, `{repo}`, `{owner}`) deixou de ser pasta e viaja no frontmatter (campo `context`/`owner`).
 
-Antes de gravar, **verifique se o diretório de contexto existe**:
+O diretório-alvo é sempre `pr-reviews/` na raiz do vault — **já existe, não precisa perguntar se cria**. Resolva o `CONTEXTO` (pela tabela acima) só para popular o frontmatter:
 
 ```bash
 VAULT="$HOME/.notes"
-ls "$VAULT/1-contexts/$CONTEXTO" 2>/dev/null || \
-  echo "Contexto '$CONTEXTO' não existe. Criar? (sim/não)"
+mkdir -p "$VAULT/pr-reviews"   # idempotente; eixo já existe pós-flattening
 ```
-
-Se não existir, **pergunte ao usuário** antes de criar — pode ser typo no owner/repo. Crie a subpasta `pr-reviews/` (e `pr-reviews/<repo>/` quando aplicável) sob demanda.
 
 Convenção de **filename**:
 
@@ -211,6 +208,7 @@ pr_url: "{url ou 'N/A — local branch'}"
 pr_number: {number ou null}
 repo: "{repo-slug}"
 owner: "{owner}"
+context: "{contexto-resolvido}"
 author: "{gh-login}"
 status: {status do subagent}
 tags: [pr-review, {repo-slug}, {area-tag-opcional}, {ticket-slug-lowercase-se-houver}]
@@ -273,6 +271,7 @@ pr_url: "..."
 pr_number: {n}
 repo: "{repo}"
 owner: "{owner}"
+context: "{contexto-resolvido}"
 author: "{login}"
 status: {status agregado — ver regra abaixo}
 reviewers: [pr-reviewer-frontend, pr-reviewer-backend]
