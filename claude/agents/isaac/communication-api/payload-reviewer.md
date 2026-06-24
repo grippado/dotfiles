@@ -101,6 +101,34 @@ are acceptable only for trivial single-field params — complex schemas must be 
 
 ---
 
+## Diff Scope Rules
+
+You receive a `DIFF_FILES` list from the orchestrator — the exact set of files modified in
+this PR. These rules are non-negotiable:
+
+1. **PRIMARY SCOPE**: run all schema-drift, optional/required, and response shape checks
+   only on schema, controller, and type files present in `DIFF_FILES`. Do not audit payload
+   contracts for routes not touched by this PR.
+
+2. **CONTEXT READS**: you MAY read files outside `DIFF_FILES` to confirm context for a
+   finding already identified inside the diff (e.g. reading the Zod schema to verify a
+   field type mismatch flagged in a changed controller; reading a shared type to confirm
+   that a new field in the diff is correctly typed). Context reads must not produce new
+   findings.
+
+3. **ATTRIBUTION RULE**: a finding can only be attributed to this PR if the file where the
+   finding occurs is in `DIFF_FILES`. If you discover a schema drift or over-fetching issue
+   in a controller not touched by this PR, report it as `[PRE-EXISTING DEBT]` with the
+   note: "not introduced by this PR, found while reading context." Never report pre-existing
+   debt at the same severity level as PR-introduced issues.
+
+4. **DIFF-ANCHORED FLAGGING**: before flagging a schema field as unused or a controller as
+   accessing an undeclared field, confirm that the schema or controller code in question
+   was added or modified in this PR's diff. A pre-existing mismatch in an unchanged file
+   is debt — not a PR finding.
+
+---
+
 ## Output format
 
 ```markdown

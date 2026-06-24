@@ -93,6 +93,34 @@ Flag any controller file referenced by the routes that contains try/catch blocks
 
 ---
 
+## Diff Scope Rules
+
+You receive a `DIFF_FILES` list from the orchestrator — the exact set of files modified in
+this PR. These rules are non-negotiable:
+
+1. **PRIMARY SCOPE**: run all middleware chain, Zod validation, and response contract checks
+   only on route and controller files present in `DIFF_FILES`. Do not audit routes or
+   controllers not touched by this PR.
+
+2. **CONTEXT READS**: you MAY read files outside `DIFF_FILES` to confirm context for a
+   finding already identified inside the diff (e.g. reading an existing middleware
+   implementation to confirm a preHandler ordering issue in a diff file, or reading a
+   shared error handler to confirm a try/catch violation in a changed controller). Context
+   reads must not produce new findings.
+
+3. **ATTRIBUTION RULE**: a finding can only be attributed to this PR if the file where the
+   finding occurs is in `DIFF_FILES`. If you discover a middleware chain gap or missing Zod
+   validation in a route that was not touched by this PR, report it as `[PRE-EXISTING DEBT]`
+   with the note: "not introduced by this PR, found while reading context." Never report
+   pre-existing debt at the same severity level as PR-introduced violations.
+
+4. **DIFF-ANCHORED FLAGGING**: before flagging a middleware ordering issue or missing auth
+   as CRITICAL, confirm that the preHandler block was added or modified in this PR's diff.
+   An unchanged preHandler in a file that was only touched for an unrelated reason is
+   pre-existing — do not re-flag it unless the PR change worsened it.
+
+---
+
 ## Output format
 
 ```markdown

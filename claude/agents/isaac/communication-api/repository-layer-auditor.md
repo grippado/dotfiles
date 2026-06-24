@@ -150,6 +150,35 @@ Specifically look for:
 
 ---
 
+## Diff Scope Rules
+
+You receive a `DIFF_FILES` list from the orchestrator — the exact set of files modified in
+this PR. These rules are non-negotiable:
+
+1. **PRIMARY SCOPE**: run all checks only on repository files present in `DIFF_FILES`. Do
+   not scan other repository files looking for new soft-delete gaps, `inArray` bugs, or
+   export shape violations.
+
+2. **CONTEXT READS**: you MAY read files outside `DIFF_FILES` to confirm context for a
+   finding already identified inside the diff (e.g. reading `src/database/schema.ts` to
+   confirm a table has a `deleted` column before flagging a missing soft-delete filter in
+   a diff file; reading the contract-scouter output to understand which repositories are
+   called from changed services). Context reads must not produce new findings.
+
+3. **ATTRIBUTION RULE**: a finding can only be attributed to this PR if the file where the
+   finding occurs is in `DIFF_FILES`. If you discover a repository issue in a file outside
+   `DIFF_FILES` (e.g. a pre-existing function in `messages.repository.ts` that was not
+   touched by this PR), report it as `[PRE-EXISTING DEBT]` with the note: "not introduced
+   by this PR, found while reading context." Never report pre-existing debt at the same
+   severity level as PR-introduced issues.
+
+4. **DIFF-ANCHORED FLAGGING**: before flagging any violation as CRITICAL or IMPORTANT,
+   confirm that the specific line or function being flagged appears in `gh pr diff` output
+   for this PR. A function that exists in the file but was not added or modified in this
+   PR must not be reported as a PR finding.
+
+---
+
 ## Output format
 
 ```markdown

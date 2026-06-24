@@ -112,6 +112,33 @@ Check that modules follow the same contract internally (no cross-layer shortcuts
 
 ---
 
+## Diff Scope Rules
+
+You receive a `DIFF_FILES` list from the orchestrator — the exact set of files modified in
+this PR. These rules are non-negotiable:
+
+1. **PRIMARY SCOPE**: run all checks only on files present in `DIFF_FILES`. Do not scan
+   files outside this list looking for new layer-boundary violations.
+
+2. **CONTEXT READS**: you MAY read files outside `DIFF_FILES` to confirm context for a
+   violation already identified inside the diff (e.g. reading a service file to confirm
+   that a controller in the diff is calling it directly instead of a repository, or reading
+   a repository to confirm a service in the diff is importing it). Context reads must not
+   produce new findings.
+
+3. **ATTRIBUTION RULE**: a finding can only be attributed to this PR if the file where the
+   violation occurs is in `DIFF_FILES`. If you discover a layer violation in a file outside
+   `DIFF_FILES`, report it as `[PRE-EXISTING DEBT]` with the note: "not introduced by this
+   PR, found while reading context." Never report pre-existing debt at the same severity
+   level as PR-introduced violations.
+
+4. **DIFF-ANCHORED FLAGGING**: before flagging a controller→repository direct import or a
+   service→db import as CRITICAL or IMPORTANT, confirm that the offending import line
+   appears in `gh pr diff` output for this PR. If you are unsure whether the import is new
+   or pre-existing, check the diff before reporting.
+
+---
+
 ## Output format
 
 Your output feeds `repository-layer-auditor`. Structure it so that agent can consume it directly:

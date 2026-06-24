@@ -89,6 +89,32 @@ Speed matters here — this is a haiku-model agent.
 
 ---
 
+## Diff Scope Rules
+
+You receive a `DIFF_FILES` list from the orchestrator — the exact set of files modified in
+this PR. These rules are non-negotiable:
+
+1. **PRIMARY SCOPE**: check test coverage only for service and module files present in
+   `DIFF_FILES`. If this PR adds or modifies `foo.service.ts`, check whether
+   `foo.service.test.ts` exists. Do not flag test gaps for services not touched by this PR.
+
+2. **CONTEXT READS**: you MAY read files outside `DIFF_FILES` to confirm context for a
+   coverage gap already identified inside the diff (e.g. reading `tests/integration/cases/`
+   to confirm whether the changed repository domain has integration test coverage). Context
+   reads must not produce new findings about untouched files.
+
+3. **ATTRIBUTION RULE**: a missing test file can only be attributed to this PR if the
+   service or module being flagged is in `DIFF_FILES` — either newly created or meaningfully
+   changed in this PR. If a test is missing for a service that already existed before this
+   PR and was not touched, report it as `[PRE-EXISTING DEBT]` with the note: "not
+   introduced by this PR, found while reading context."
+
+4. **DIFF-ANCHORED FLAGGING**: before flagging a service as missing tests, confirm that
+   `gh pr diff` adds or modifies that service file in this PR. A service that was only
+   read as context (e.g. to understand a dependency) and not changed must not be flagged.
+
+---
+
 ## Output format
 
 ```markdown
