@@ -16,8 +16,9 @@ see ../AGENT_SPEC.md.
 | Agent | File | Domain |
 |-------|------|--------|
 | repo-owner | `repo-owner.md` | Orchestrator — mandatory, always first |
-| trpc-auditor | `trpc-auditor.md` | tRPC procedure patterns, input validation, thin orchestration, type placement |
-| module-boundary-auditor | `module-boundary-auditor.md` | ESLint boundary rules, module isolation, import aliases |
+| trpc-auditor | `trpc-auditor.md` | tRPC procedure patterns, input validation, implement<T>(), userProcedure, ctx guard, observabilityTargets |
+| module-boundary-auditor | `module-boundary-auditor.md` | ESLint boundaries, cross-module imports, import aliases, DynamicAppSkeleton, CODEOWNERS |
+| env-auditor | `env-auditor.md` | createEnv pattern, runtimeEnv completeness, turbo.json globalEnv, NEXT_PUBLIC_ prefix rules |
 
 ## Dependency graph
 
@@ -26,14 +27,15 @@ Phase 1 — parallel (all independent):
   ┌───────────────────────────┐
   │ trpc-auditor              │
   │ module-boundary-auditor   │
+  │ env-auditor               │  ← run when env.ts/keys.ts changes detected
   └───────────────────────────┘
 
 Phase 2 — synthesis:
   repo-owner (collects, deduplicates, classifies)
 ```
 
-Both specialists read disjoint layers (tRPC router files vs module boundary / import paths).
-They can run fully in parallel.
+All specialists read disjoint layers and can run fully in parallel.
+repo-owner dispatches env-auditor selectively when env.ts or keys.ts files are in the diff.
 
 ## Commands
 

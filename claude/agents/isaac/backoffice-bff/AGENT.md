@@ -17,24 +17,32 @@ see ../AGENT_SPEC.md.
 |-------|------|--------|
 | repo-owner | `repo-owner.md` | Orchestrator — mandatory, always first |
 | contract-scouter | `contract-scouter.md` | Layer contract enforcement (route→controller→use-case→client) |
-| route-auditor | `route-auditor.md` | Fastify routes, Zod validation, middleware chain, correlation-id |
+| route-auditor | `route-auditor.md` | Fastify routes, Zod validation, middleware chain |
 | payload-reviewer | `payload-reviewer.md` | Zod schemas, response shapes, error types |
 | test-coverage-scouter | `test-coverage-scouter.md` | Test coverage, fake client usage, Vitest patterns |
+| use-case-auditor | `use-case-auditor.md` | Use case framework-agnosticism, constructor DI, error hierarchy, correlationId |
+| correlation-id-auditor | `correlation-id-auditor.md` | x-correlation-id propagation chain; flags randomUUID() in clients |
+| antipattern-scouter | `antipattern-scouter.md` | Legacy antipatterns: console.log, process.env, hardcoded URLs, try/catch in controllers |
 
 ## Dependency graph
 
 ```
-Phase 1 — parallel (all independent reads):
-  ┌──────────────────────┐
-  │ contract-scouter     │ ─────────────────────────────────────────┐
-  │ route-auditor        │                                          │
-  │ payload-reviewer     │                                          │
-  │ test-coverage-scouter│                                          ▼
-  └──────────────────────┘             Phase 2 — sequential (optional):
-                                       If contract-scouter finds cross-layer
-                                       violations, repo-owner may ask it to
-                                       verify which clients are misrouted.
+Phase 1 — sequential (contract-scouter maps the full chain first):
+  contract-scouter
+
+Phase 2 — parallel (after contract-scouter):
+  ┌──────────────────────────┐
+  │ route-auditor            │
+  │ payload-reviewer         │
+  │ test-coverage-scouter    │
+  │ use-case-auditor         │
+  │ correlation-id-auditor   │
+  │ antipattern-scouter      │
+  └──────────────────────────┘
 ```
+
+contract-scouter runs first to map the Route→Controller→UseCase→Client chain.
+All others run in parallel after it returns.
 
 ## Commands
 

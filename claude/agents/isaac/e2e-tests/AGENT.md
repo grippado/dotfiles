@@ -18,22 +18,25 @@ see ../AGENT_SPEC.md.
 | repo-owner | `repo-owner.md` | Orchestrator — mandatory, always first |
 | scenario-coverage-auditor | `scenario-coverage-auditor.md` | Scenario completeness, happy+error paths, flakiness patterns |
 | pom-pattern-reviewer | `pom-pattern-reviewer.md` | Page Object Model usage, selector quality, fixture patterns |
+| e2e-pma-planejador | `e2e-pma-planejador.md` | Explore PMA flow via Playwright MCP; produce PLANEJAMENTO.md ready for implementation |
+| e2e-pma-implementador | `e2e-pma-implementador.md` | Implement scenarios.ts + .spec.ts from a PLANEJAMENTO.md |
+| e2e-pma-validador | `e2e-pma-validador.md` | Run, diagnose, and iteratively fix a PMA spec until it passes |
 
 ## Dependency graph
 
 ```
-Phase 1 — parallel (all independent):
+PR review flow — parallel:
   ┌───────────────────────────────┐
   │ scenario-coverage-auditor     │
   │ pom-pattern-reviewer          │
   └───────────────────────────────┘
 
-Phase 2 — synthesis:
-  repo-owner (collects, deduplicates, classifies)
+PMA test creation flow — sequential (user-initiated):
+  e2e-pma-planejador → e2e-pma-implementador → e2e-pma-validador
 ```
 
-Both specialists are fully independent: scenario-coverage reads spec + scenarios.ts files,
-pom-pattern reads fixtures/poms/ files. No output dependency.
+PR review: both auditors run in parallel (disjoint file sets).
+PMA creation: the three agents run in strict sequence — each receives prior agent's output.
 
 ## Commands
 

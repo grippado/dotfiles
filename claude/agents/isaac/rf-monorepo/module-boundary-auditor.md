@@ -77,6 +77,14 @@ array. Missing = all calls fall back to raw namespace name in dashboards.
 
 **No barrel `index.ts` at module root:**
 If a new module adds a root `index.ts` = IMPORTANT. The generator intentionally omits it.
+Import directly from specific file paths to enable proper tree-shaking.
+
+**DynamicAppSkeleton not registered for new module route:**
+When a module adds a new full-page route (e.g., under `[locale]/[schoolId]/agenda/`), the host
+app's `DynamicAppSkeleton` must have a matching `pathname.includes(...)` branch. Without it,
+users see the NavBar spinner (generic skeleton) before the route-level `loading.tsx` mounts.
+Full-screen routes (no navbar) must be registered BEFORE the `withNavBar` branch.
+Check: `grep -rn "pathname.includes" apps/*/src/components/ 2>/dev/null`
 
 ### NOTE
 

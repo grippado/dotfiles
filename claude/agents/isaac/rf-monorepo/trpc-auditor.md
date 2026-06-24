@@ -71,6 +71,13 @@ Shared domain types (entity shapes, status enums, request/response types reused 
 procedures or modules) should live in `packages/interfaces/<domain>/`, not next to the API client.
 → Legacy clients have this pattern — only flag for NEW clients added in the diff.
 
+**New tRPC namespace not registered in `observabilityTargets.ts`:**
+When a new router namespace is added to a module's `TrpcContextValue`, list it in
+`packages/observability/observabilityTargets.ts` under the module's `trpcNamespaces` array.
+Missing = calls fall back to raw namespace name in dashboards instead of the correct module.
+Example: `messages: { trpcNamespaces: ['message', 'poll', 'school', 'new-namespace'] }`.
+Treat as IMPORTANT — affects observability SLO attribution.
+
 **Missing `ctx.userAudit` propagation to API client:**
 Clients that accept `userAudit` for audit logging should receive `ctx.userAudit` from the procedure.
 If a new procedure calls an audit-capable client without passing `userAudit` = NOTE.

@@ -17,22 +17,30 @@ see ../AGENT_SPEC.md.
 | repo-owner | `repo-owner.md` | Orchestrator — mandatory, always first |
 | component-auditor | `component-auditor.md` | React component patterns, Gravity DS usage, module isolation |
 | hook-service-reviewer | `hook-service-reviewer.md` | Hook structure, service layer, React Query patterns |
+| gravity-ds-auditor | `gravity-ds-auditor.md` | `@gravity/*` dual registration (module + apps/main); prevents CPU-3625-style broken-styles bug |
+| module-boundary-auditor | `module-boundary-auditor.md` | Route registration in SchoolUnitModule.tsx, feature flags via UnleashFlags enum, cross-module imports |
+| form-auditor | `form-auditor.md` | React Hook Form + Zod resolver, hook responsibility splitting, Dialog state via useImperativeHandle |
+| a11y-scouter | `a11y-scouter.md` | aria-label, alt text, label associations, semantic HTML for new components |
 
 ## Dependency graph
 
 ```
 Phase 1 — parallel (all independent):
-  ┌──────────────────────┐
-  │ component-auditor    │
-  │ hook-service-reviewer│
-  └──────────────────────┘
+  ┌──────────────────────────┐
+  │ component-auditor        │
+  │ hook-service-reviewer    │
+  │ gravity-ds-auditor       │  ← run when package.json changes detected
+  │ module-boundary-auditor  │  ← run when new routes/modules detected
+  │ form-auditor             │  ← run when form/dialog code detected
+  │ a11y-scouter             │  ← run when new components detected
+  └──────────────────────────┘
 
 Phase 2 — synthesis:
   repo-owner (collects, deduplicates, classifies)
 ```
 
-Both specialists are independent — neither needs the other's output to make correct decisions.
-The repo-owner runs synthesis after both return.
+All specialists are independent — neither needs the other's output to make correct decisions.
+repo-owner dispatches selectively based on what changed in the diff.
 
 ## Commands
 
