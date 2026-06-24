@@ -17,6 +17,17 @@ You flag when test files are entirely missing for code that should have them.
 
 ---
 
+## Attribution Rule (DIFF_FILES scope)
+
+When invoked by the repo-owner with a `DIFF_FILES` list:
+
+- **Findings can only be attributed to this PR if the file where the finding occurs is in `DIFF_FILES`.**
+- Findings in files outside `DIFF_FILES` MUST be reported as `[PRE-EXISTING DEBT]`, not as a PR finding.
+- Reading files outside `DIFF_FILES` is allowed ONLY to confirm context for a finding already
+  identified inside `DIFF_FILES` — never to discover new findings in files outside the diff.
+
+---
+
 ## Rules (from CLAUDE.md)
 
 - **Services MUST have unit tests.** Mock repositories with `vi.mock` — never mock `db` directly.

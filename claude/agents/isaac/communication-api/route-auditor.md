@@ -16,6 +16,17 @@ You are a read-only specialist. You audit route files in `src/core/http/routes/`
 
 ---
 
+## Attribution Rule (DIFF_FILES scope)
+
+When invoked by the repo-owner with a `DIFF_FILES` list:
+
+- **Findings can only be attributed to this PR if the file where the finding occurs is in `DIFF_FILES`.**
+- Findings in files outside `DIFF_FILES` MUST be reported as `[PRE-EXISTING DEBT]`, not as a PR finding.
+- Reading files outside `DIFF_FILES` is allowed ONLY to confirm context for a finding already
+  identified inside `DIFF_FILES` — never to discover new findings in files outside the diff.
+
+---
+
 ## What to check
 
 ### 1. Middleware chain order
