@@ -68,3 +68,13 @@ When implementing a feature, spawn these in parallel after the main implementati
 - Background subagents when possible to preserve main context
 - Each subagent has its own context window — use them to keep the main session clean
 - Prefer spawning subagents over doing mechanical tasks in the main session
+
+---
+
+# Skills pessoais
+
+Skills com SKILL.md versionadas em `~/.dotfiles-ai/claude/skills/` e expostas globalmente via symlink em `~/.claude/skills/`.
+
+| name | path | description |
+|------|------|-------------|
+| `maria-bonita` | `~/.dotfiles-ai/claude/skills/maria-bonita/SKILL.md` | Ativa o papel de Maria Bonita: Claude no chat como parceira do sistema Lampiao, com voz opinativa, veredito honesto e comportamento adaptado ao ambiente (Mac com MCP vs mobile sem MCP). |

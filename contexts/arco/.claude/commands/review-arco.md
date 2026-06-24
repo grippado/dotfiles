@@ -26,13 +26,22 @@ Skill orquestradora de PR review para o time Arco. Coleta contexto, delega anál
 | `/review-arco https://github.com/OlaIsaac/backoffice-bff/pull/790` | PR do URL informado (qualquer repo OlaIsaac/classapp) |
 | `/review-arco https://github.com/classapp/communication-api/pull/698` | idem, cross-repo |
 
+**Flag opcional:** `--agents-on` (alias `-aon`) pode aparecer em qualquer posição dos argumentos (antes ou depois do PR number/URL). Quando ausente: comportamento atual inalterado. Quando presente: ativa o pipeline de agents especializados do repo em benchmark mode (ver passo 3c).
+
 ## Fluxo de execução
 
 ### 1. Resolver o target
 
 ```bash
-# se arg numérico:
-PR_NUMBER=$1
+# Detectar e remover a flag --agents-on / -aon antes de resolver o target
+AGENTS_ON=false
+for arg in "$@"; do
+  case "$arg" in --agents-on|-aon) AGENTS_ON=true ;; esac
+done
+# ARGS = argumentos sem a flag (usados abaixo como PR_NUMBER / URL)
+
+# se arg numérico (após remover a flag):
+PR_NUMBER=<primeiro arg que não seja a flag>
 REPO_FULL=$(gh repo view --json nameWithOwner -q .nameWithOwner)
 
 # se arg é URL:
@@ -139,19 +148,55 @@ gh api repos/$REPO_FULL/pulls/comments/<databaseId> -q '.body'
 
 Guardar como `PR_THREADS` (dois conjuntos: `open` + `resolved`). Se a query GraphQL falhar (rate limit, permissão), continuar com `PR_THREADS = null` e avisar no chat.
 
+### 3c. Pipeline --agents-on (quando `AGENTS_ON == true`)
+
+Detectar o repo-slug e o caminho do repo-owner:
+
+```bash
+REPO_SLUG=$(gh repo view --json name -q .name)
+REPO_OWNER_PATH="$HOME/.dotfiles-ai/claude/agents/isaac/$REPO_SLUG/repo-owner.md"
+```
+
+Se `$REPO_OWNER_PATH` não existir:
+- Avise no chat: `nenhum agent especializado encontrado para <repo-slug>. Seguindo com fluxo normal.`
+- Defina `AGENTS_ON = false` e avance para o passo 4 sem benchmark.
+
+Se existir, invocar o `repo-owner` via Task tool ANTES do passo 4 (passar o repo-owner.md como `subagent_type` ou via instrução inline):
+- Inputs: diff completo, metadados da PR (título, número, repo, branches, autor) e a flag `--agents-on`.
+- O repo-owner orquestra os agents especializados e retorna um `AGENT_REPORT` estruturado com findings por categoria (Critical, Important, Notes) e "Agents run".
+- Guardar `AGENT_REPORT` — alimenta o benchmark no passo 4b e o template no passo 6.
+
 ### 4. Delegar análise ao subagent
 
-Use a Task tool com `subagent_type: arco-pr-reviewer` passando:
+**Inputs base** (comuns aos dois fluxos abaixo):
+- Diff completo, lista de commits, título + ticket, metadados (repo, autor, branches), caminho do checkout local se disponível
+- `PREV_REVIEW_COMMENTS` — instrução: não repetir findings já cobertos; referenciar "já apontado em rodada anterior" se sobreposição for inevitável
+- `PR_THREADS` — instrução: se um finding cobrir o mesmo ponto de thread existente, classificar como `resolved` (se `isResolved == true`) ou referenciar a URL da thread irmã
 
-- O diff completo
-- Lista de commits
-- Título + ticket
-- Metadados (repo, autor, branches)
-- Caminho do checkout local se disponível
-- `PREV_REVIEW_COMMENTS`: seção `## Comentários de Review` do review anterior (se houver). Instrução ao subagent: **não repetir findings já cobertos; se sobreposição for inevitável, referenciar com "já apontado em rodada anterior" em vez de repetir o texto**
-- `PR_THREADS`: threads existentes na PR (abertas e resolvidas) com `path`, `line`, `author`, `isResolved` e body completo. Instrução ao subagent: **se um finding cobrir o mesmo ponto de uma thread existente, classificar como `resolved` (se `isResolved == true`) ou referenciar a URL da thread irmã em vez de repetir**
+O subagent retorna o relatório estruturado em `SUMARIO`, `COMENTARIOS`, `CHECKLIST`, `VEREDITO`, `STATUS`, `PRIORIDADE`. Você não precisa traduzir nada — só fazer parsing e injetar no template.
 
-O subagent retorna o relatório estruturado nas seções `SUMARIO`, `COMENTARIOS`, `CHECKLIST`, `VEREDITO`, `STATUS`, `PRIORIDADE`. Você não precisa traduzir nada — só fazer parsing e injetar no template.
+#### 4a. Sem --agents-on (`AGENTS_ON == false`)
+
+Use a Task tool com `subagent_type: arco-pr-reviewer` passando os inputs base. Guardar resultado como `FINAL_REPORT`.
+
+#### 4b. Com --agents-on — benchmark mode (`AGENTS_ON == true`)
+
+Execute em paralelo via Task tool:
+
+**Task A — Baseline:** `arco-pr-reviewer` com os inputs base (sem `AGENT_REPORT`). Guardar como `BASELINE_REPORT`.
+
+**Task B — Agents:** `arco-pr-reviewer` com os inputs base **mais** o `AGENT_REPORT` do passo 3c como seção adicional. Instrução ao subagent: usar os findings do `AGENT_REPORT` como contexto para aprofundar a análise, não apenas replicá-los — avaliar se cada finding procede e integrá-lo como evidência. Guardar como `AGENTS_REPORT`.
+
+Após ambas concluírem, computar o benchmark (identificar findings por chave `(arquivo, linha/bloco, tema)`):
+
+```
+só_agents   = findings em AGENTS_REPORT   não presentes em BASELINE_REPORT
+só_baseline = findings em BASELINE_REPORT não presentes em AGENTS_REPORT
+ambos       = findings presentes nos dois
+```
+
+Guardar `BENCHMARK = { só_agents, só_baseline, ambos }`.
+O `AGENTS_REPORT` é o relatório consolidado que vai para o vault. Definir `FINAL_REPORT = AGENTS_REPORT`.
 
 ### 5. Computar nome do arquivo
 
@@ -176,6 +221,22 @@ Path completo: `$NOTES_VAULT/pr-reviews/{filename}`
 ### 6. Renderizar template e gravar
 
 Template canônico (preencher com os dados coletados + output do subagent):
+
+> **Quando `AGENTS_ON == true`:** inserir a seção `## Benchmark --agents-on` imediatamente ANTES do `## Resumo`, conforme bloco abaixo. Quando `AGENTS_ON == false`, omitir essa seção inteira.
+
+```markdown
+<!-- SOMENTE quando --agents-on está presente -->
+## Benchmark --agents-on
+
+| Categoria | Findings |
+|-----------|----------|
+| Encontrado apenas com agents | {lista de (arquivo:linha — tema) de só_agents, ou "(nenhum)"} |
+| Encontrado apenas no baseline | {lista de só_baseline, ou "(nenhum)"} |
+| Encontrado em ambos | {lista de ambos, ou "(nenhum)"} |
+
+Agents run: {lista de agents invocados pelo repo-owner, conforme seção "Agents run" do AGENT_REPORT}
+<!-- FIM da seção benchmark -->
+```
 
 ```markdown
 ---

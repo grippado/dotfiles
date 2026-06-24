@@ -25,8 +25,9 @@ Roda independente dos outros. Pensado para PRs com rodadas do bot `arco-pr-revie
 | `/review-arco-iterate https://github.com/classapp/communication-api/pull/962` | PR do URL informado |
 | `/review-arco-iterate 962 --auto` | Pula a confirmação e executa o fluxo completo direto (default da confirmação = "postar tudo") |
 | `/review-arco-iterate 962 --watch` | Roda a 1ª rodada e **fica vivo** monitorando novas rodadas do bot + o CI da PR até ela assentar/mergear (ver "Modo WATCH") |
+| `/review-arco-iterate 962 --agents-on` | Ativa o pipeline de agents especializados do repo para enriquecer a fase de verificação (ver passo 2b) |
 
-As flags `--auto` e `--watch` podem aparecer junto com qualquer forma acima e entre si. `--watch` **implica `--auto`** em todas as rodadas (a sessão fica desacompanhada; não há ninguém para confirmar).
+As flags `--auto`, `--watch` e `--agents-on` (alias `-aon`) podem aparecer em qualquer posição dos argumentos e combinadas entre si. `--watch` **implica `--auto`** em todas as rodadas. Quando `--agents-on` está presente junto com `--watch`, o pipeline de agents é ativado em todas as rodadas do watch.
 
 ## Ordem de execução OBRIGATÓRIA (NÃO reordenar)
 
@@ -55,7 +56,16 @@ A confirmação interativa (passo 6) fica ENTRE a fase 2 (aplicar correções) e
 
 ```bash
 gh auth status           # se falhar, abortar pedindo `gh auth login`
-# parse args: separar PR-spec de --auto
+# parse args: separar PR-spec de --auto / --watch / --agents-on / -aon
+# Detectar flags:
+AUTO=false; WATCH=false; AGENTS_ON=false
+for arg in "$@"; do
+  case "$arg" in
+    --auto)         AUTO=true ;;
+    --watch)        WATCH=true; AUTO=true ;;
+    --agents-on|-aon) AGENTS_ON=true ;;
+  esac
+done
 # URL  -> {owner}/{repo}/pull/{number}
 # número -> REPO_FULL=$(gh repo view --json nameWithOwner -q .nameWithOwner)
 # sem arg ->
@@ -120,11 +130,33 @@ gh api repos/$REPO_FULL/pulls/comments/<databaseId> -q '.body'
 
 Se não sobrar nenhuma thread acionável, avise no chat e **termine** (não commitar nada).
 
+### 2b. Pipeline --agents-on (quando `AGENTS_ON == true`)
+
+Detectar o repo-slug e o caminho do repo-owner:
+
+```bash
+REPO_SLUG=$(gh repo view --json name -q .name)
+REPO_OWNER_PATH="$HOME/.dotfiles-ai/claude/agents/isaac/$REPO_SLUG/repo-owner.md"
+```
+
+Se `$REPO_OWNER_PATH` não existir:
+- Avise no chat: `nenhum agent especializado encontrado para <repo-slug>. Verificação de threads seguirá sem contexto adicional de agents.`
+- Defina `AGENTS_ON = false` e siga para o passo 3 normalmente.
+
+Se existir, invocar o `repo-owner` via Task tool passando:
+- Diff completo da PR (`gh pr diff $PR_NUMBER --repo $REPO_FULL`)
+- Metadados da PR (título, número, repo, branches, autor)
+- Lista de threads abertas coletadas no passo 2 (path, linha, body de cada comentário)
+- A flag `--agents-on`
+
+O repo-owner orquestra os agents especializados e retorna um `AGENT_REPORT` estruturado (Critical/Important/Notes + "Agents run"). Guardar `AGENT_REPORT` — ele é passado como contexto adicional no passo 3 para cada decisão de thread.
+
 ### 3. Verificar e decidir cada thread (planejar)  · fase 1
 
 Para CADA thread aberta, ANTES de aceitar ou recusar:
 
 - **Verificar a alegação contra o código/testes/docs reais.** O `arco-pr-reviewer` produz falsos positivos com frequência (ex.: aponta perda de precisão num `bigint mode:'number'`, ou "mensagem some" num cenário que já tem teste). Leia o arquivo citado, os testes adjacentes e a doc do endpoint antes de concluir. Reviewers humanos erram menos, mas o mesmo rigor se aplica.
+- **Quando `AGENTS_ON == true`:** consultar o `AGENT_REPORT` (passo 2b) ao verificar cada thread. Se o AGENT_REPORT cobrir o mesmo ponto da thread (mesmo arquivo/linha/tema), usar os findings dos specialists como evidência adicional a favor ou contra a alegação. Se o AGENT_REPORT contradisser o reviewer (ex.: um specialist confirmou que o código está correto), isso pesa na classificação como improcedente. Se convergir, pesa como procedente. Citar a fonte no fundamento: `(corroborado por route-auditor)` ou `(refutado por repository-layer-auditor)`.
 - Classifique: **procede** (aplicar correção) ou **improcedente/marginal** (recusar com fundamento).
 - Sempre **citar `arquivo:linha`** na justificativa.
 
