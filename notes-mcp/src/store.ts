@@ -292,26 +292,49 @@ export class Store {
     this.saveCache();
   }
 
+  /** Gera slug kebab-case ASCII a partir de um título. */
+  private slugify(title: string): string {
+    return title
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")  // remove diacríticos
+      .replace(/[^a-z0-9\s-]/g, "")
+      .trim()
+      .replace(/[\s_]+/g, "-")
+      .replace(/-{2,}/g, "-")
+      .slice(0, 80)
+      .replace(/^-+|-+$/g, "") || "nota";
+  }
+
   /**
    * Monta o frontmatter "organize-ready" que a Frente 1.0 do /organize consome.
+   * Segue o ADR-013: type canônico + provenance block para docs gerados por máquina.
    * pending_organize é booleano (sem aspas) de propósito — é o gatilho exato do grep.
    */
   private buildInboxFrontmatter(opts: {
+    type?: string;
     tags?: string[];
     suggestedContext?: string;
     suggestedSubtype?: string;
+    capturedAt: string;
+    dateStr: string;
   }): string {
-    const d = new Date();
-    const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-      d.getDate()
-    ).padStart(2, "0")}`;
+    const type = opts.type ?? "note";
     const tags = [...(opts.tags ?? [])];
     if (!tags.includes("pending-organize")) tags.push("pending-organize");
-    const lines = ["---", `date: "${date}"`, "tags:"];
-    for (const t of tags) lines.push(`  - ${t}`);
-    lines.push("pending_organize: true");
+    const lines = [
+      "---",
+      `date: "${opts.dateStr}"`,
+      `type: ${type}`,
+      "tags:",
+      ...tags.map((t) => `  - ${t}`),
+      "pending_organize: true",
+    ];
     if (opts.suggestedContext) lines.push(`suggested_context: ${opts.suggestedContext}`);
     lines.push(`suggested_subtype: ${opts.suggestedSubtype ?? "exploration"}`);
+    lines.push("provenance:");
+    lines.push("  generator: notes-mcp");
+    lines.push(`  captured_at: "${opts.capturedAt}"`);
     lines.push("---");
     return lines.join("\n") + "\n";
   }
@@ -319,20 +342,23 @@ export class Store {
   async createNote(opts: {
     title: string;
     content: string;
-    folder?: string;
+    type?: string;
     filename?: string;
     suggestedContext?: string;
     suggestedSubtype?: string;
     tags?: string[];
   }): Promise<string> {
-    const folder = opts.folder ?? "0-inbox";
-    const safeName =
-      (opts.filename ?? opts.title)
-        .replace(/[/\\:*?"<>|]/g, "-")
-        .replace(/\s+/g, " ")
-        .trim()
-        .slice(0, 120) || "nota-sem-titulo";
-    const fileName = safeName.toLowerCase().endsWith(".md") ? safeName : `${safeName}.md`;
+    const folder = "0-inbox";
+    const d = new Date();
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const capturedAt = d.toISOString();
+
+    // Filename: YYYY-MM-DD-<slug>.md (timestamp prefix obrigatório per CLAUDE.md)
+    const slug = opts.filename
+      ? opts.filename.replace(/\.md$/i, "").replace(/[/\\:*?"<>|]/g, "-").trim().slice(0, 100)
+      : this.slugify(opts.title);
+    const fileName = `${dateStr}-${slug}.md`;
+
     const absPath = path.join(this.vaultRoot, folder, fileName);
     assertInsideVault(this.vaultRoot, absPath);
     if (fs.existsSync(absPath)) {
@@ -340,20 +366,16 @@ export class Store {
     }
     fs.mkdirSync(path.dirname(absPath), { recursive: true });
 
-    const isInbox = folder === "0-inbox" || folder.startsWith(`0-inbox${path.sep}`);
     const hasOwnFrontmatter = opts.content.trimStart().startsWith("---");
 
     let body: string;
     if (hasOwnFrontmatter) {
-      // Caller já mandou frontmatter completo — respeitar.
       body = opts.content;
     } else {
       const heading = opts.content.trimStart().startsWith("#")
         ? opts.content
         : `# ${opts.title}\n\n${opts.content}\n`;
-      // Notas no inbox ganham frontmatter organize-ready; notas colocadas
-      // deliberadamente em outro contexto não precisam de pending_organize.
-      body = isInbox ? this.buildInboxFrontmatter(opts) + "\n" + heading : heading;
+      body = this.buildInboxFrontmatter({ ...opts, dateStr, capturedAt }) + "\n" + heading;
     }
 
     fs.writeFileSync(absPath, body, "utf8");

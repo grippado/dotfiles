@@ -32,7 +32,7 @@ const ensureReady = () => indexReady;
 server.registerTool(
   "search_notes",
   {
-    title: "Buscar notas",
+    annotations: { title: "Buscar notas" },
     description:
       "Busca no vault Obsidian (~/.notes). mode='hybrid' (padrão) combina full-text + semântica; 'fulltext' só keyword (BM25); 'semantic' só significado (embeddings). Retorna trechos rankeados com o caminho relativo da nota.",
     inputSchema: {
@@ -58,7 +58,7 @@ server.registerTool(
 server.registerTool(
   "read_note",
   {
-    title: "Ler nota",
+    annotations: { title: "Ler nota" },
     description:
       "Lê uma nota pelo caminho relativo (ex.: '2-knowledge/foo.md') ou pelo nome ([[wikilink]]). Retorna o conteúdo completo + frontmatter + links de saída resolvidos + backlinks (notas que apontam para ela).",
     inputSchema: {
@@ -88,7 +88,7 @@ server.registerTool(
 server.registerTool(
   "list_notes",
   {
-    title: "Listar notas",
+    annotations: { title: "Listar notas" },
     description:
       "Lista notas do vault. Filtra por pasta top-level (0-inbox, 1-contexts, 2-knowledge, 4-journal, 5-archive, 6-audits, 7-brag-doc) e ordena por mais recente (recent=true) ou alfabético.",
     inputSchema: {
@@ -111,33 +111,43 @@ server.registerTool(
 server.registerTool(
   "create_note",
   {
-    title: "Criar nota",
+    annotations: { title: "Criar nota" },
     description:
-      "Cria uma nova nota no vault. Por padrão grava em '0-inbox/' já com frontmatter organize-ready (pending_organize: true) para o /organize processar e arquivar depois. " +
-      "SEMPRE informe suggestedContext e suggestedSubtype quando criar no inbox, para o /organize saber pra onde mover a nota. Recusa sobrescrever notas existentes.",
+      "Cria uma nova nota no vault, sempre em '0-inbox/', com frontmatter organize-ready (ADR-013). " +
+      "Filename gerado automaticamente como YYYY-MM-DD-<slug>.md. " +
+      "Informe suggestedContext e suggestedSubtype para o /organize saber para onde mover a nota. " +
+      "Informe type com o valor canônico mais próximo do conteúdo (padrão: note). " +
+      "Recusa sobrescrever notas existentes.",
     inputSchema: {
       title: z.string().describe("Título da nota."),
       content: z.string().describe("Conteúdo em markdown (sem precisar repetir o título)."),
-      folder: z.string().optional().describe("Pasta destino (padrão: '0-inbox')."),
-      filename: z.string().optional().describe("Nome do arquivo (padrão: derivado do título)."),
-      suggestedContext: z
-        .enum(["arco", "flagbridge", "opengateway", "vozes", "pessoal", "isaac", "dotfiles-ai"])
+      type: z
+        .enum([
+          "pr-review", "pr-answer", "meeting", "meeting-transcript", "interview",
+          "scorecard", "rfc", "drt", "decision", "thread", "analysis",
+          "mutirao-run", "pdi", "note", "brag-daily", "brag-monthly", "audit", "memory-sync",
+        ])
         .optional()
-        .describe("Contexto sugerido para o /organize rotear a nota (notas no inbox)."),
+        .describe("Tipo canônico ADR-013 (padrão: note)."),
+      filename: z.string().optional().describe("Slug para o nome do arquivo (sem data, sem .md). Se omitido, derivado do título."),
+      suggestedContext: z
+        .enum(["arco", "flagbridge", "opengateway", "vozes", "pessoal", "isaac", "dotfiles-ai", "claude-atlas", "guia-cumuru"])
+        .optional()
+        .describe("Contexto sugerido para o /organize rotear a nota."),
       suggestedSubtype: z
         .enum(["decision", "bug-hunt", "refactor", "exploration", "session", "analysis"])
         .optional()
         .describe("Subtipo que define a subpasta destino (padrão: exploration)."),
-      tags: z.array(z.string()).optional().describe("Tags do frontmatter (ASCII, sem acento)."),
+      tags: z.array(z.string()).optional().describe("Tags do frontmatter (ASCII, slugs canônicos, sem acento)."),
     },
   },
-  async ({ title, content, folder, filename, suggestedContext, suggestedSubtype, tags }) => {
+  async ({ title, content, type, filename, suggestedContext, suggestedSubtype, tags }) => {
     await ensureReady();
     try {
       const rel = await store.createNote({
         title,
         content,
-        folder,
+        type,
         filename,
         suggestedContext,
         suggestedSubtype,
@@ -153,7 +163,7 @@ server.registerTool(
 server.registerTool(
   "append_note",
   {
-    title: "Anexar a uma nota",
+    annotations: { title: "Anexar a uma nota" },
     description: "Acrescenta conteúdo ao final de uma nota existente (pelo caminho relativo ou nome).",
     inputSchema: {
       path: z.string().describe("Caminho relativo ou nome da nota existente."),
