@@ -388,8 +388,10 @@ manual and optional — the per-file benchmark section is the primary record.
 | Repo | Status | Agents |
 |------|--------|--------|
 | `communication-api` | pilot | repo-owner, contract-scouter, route-auditor, test-coverage-scouter, repository-layer-auditor, payload-reviewer |
-| `backoffice` | not started | — |
-| `backoffice-bff` | not started | — |
-| `rf-monorepo` | not started | — |
+| `backoffice` | active | repo-owner, component-auditor, hook-service-reviewer |
+| `backoffice-bff` | active | repo-owner, contract-scouter, route-auditor, payload-reviewer, test-coverage-scouter |
+| `rf-monorepo` | active | repo-owner, trpc-auditor, module-boundary-auditor |
+| `technical-refining` | active | repo-owner, sdd-quality-auditor |
+| `e2e-tests` | active | repo-owner, scenario-coverage-auditor, pom-pattern-reviewer |
 | `payment-api` | not started | — |
 | `sorting-hat` | not started | — |
