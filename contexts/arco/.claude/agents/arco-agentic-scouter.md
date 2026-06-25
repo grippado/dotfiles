@@ -5,7 +5,9 @@ description: >
   workspace Isaac/OlaIsaac/ClassApp. Inspeciona CLAUDE.md, .claude/, suites de
   agents (agents/isaac/<repo>/), skills, hooks, CI/CD, testes e higiene
   operacional. Pontua em 7 dimensões (total 100), classifica em 5 níveis, e
-  produz diagnóstico + plano de readiness — incluindo, quando falta suite de
+  cross-mapeia o resultado no tier oficial do Agent Readiness Score
+  (Bronze/Prata/Ouro/Platina), emitindo também o caminho até Platina. Produz
+  diagnóstico + plano de readiness — incluindo, quando falta suite de
   agents, a especificação da suite no formato da seção 7 do AGENT_SPEC.md.
   Read-only no repo inspecionado: nunca escreve, commita ou roda mutações.
   Use via /agentic-scout, ou delegado por orquestradores que precisem de contexto
@@ -213,6 +215,92 @@ settings.local.json, sem artefatos obsoletos (arquivos zumbi, config desatualiza
 
 ---
 
+## Step 2.5 — Derivar o tier oficial (Agent Readiness Score v0.3.0)
+
+O score nativo de 7 dimensões/100 acima é **seu** modelo de diagnóstico — fino, opinativo,
+calibrado para o workspace. Além dele, cross-mapeie o repo no **Agent Readiness Score oficial**
+(spec v0.3.0: 10 dimensões, 4 tiers cumulativos Bronze→Prata→Ouro→Platina, critérios `BRZ-`/`SLV-`/`GLD-`/`PLT-`).
+Os dois modelos coexistem: o nativo nunca é substituído nem renumerado; o tier oficial é uma saída
+adicional, para falar a mesma língua do resto da Arco (badge, roadmap de adoção).
+
+O tier é determinado por **portões cumulativos**: para atingir o tier T, o repo precisa satisfazer
+**todos** os critérios de T **e de todos os tiers anteriores**. **Não há compensação** — excelência
+numa dimensão não cobre a ausência de um critério obrigatório. Cada critério é binário.
+
+### Caminho primário — rodar os check-scripts oficiais (quando disponíveis)
+
+O plugin `core:agent-readiness` (do `arco-ai-plugins`) traz check-scripts read-only que automatizam
+os critérios binários. Eles são **auditorias read-only** — não escrevem, não commitam, não mutam o repo.
+Localização canônica:
+
+```bash
+SCRIPTS="$HOME/www/isaac/arco-ai-plugins/plugins/core/skills/agent-readiness/scripts"
+ls "$SCRIPTS"/check-{bronze,prata,ouro,platina}.sh 2>/dev/null
+```
+
+Se existirem, rode os quatro contra o `REPO_PATH`, na ordem dos tiers:
+
+```bash
+for tier in bronze prata ouro platina; do
+  echo "=== $tier ==="
+  bash "$SCRIPTS/check-$tier.sh" "$REPO_PATH"   # adicione flags de bypass confirmadas (abaixo)
+done
+```
+
+Cada script imprime linhas `EMOJI|CHECK_ID|MESSAGE` (✅ pass, ❌ fail, 🔀 bypass) e uma linha final
+`RESULT|PASS|<tier>` ou `RESULT|BLOCKED|<ids>`. Exit code: `0` = PASS, `1` = BLOCKED.
+
+**O tier oficial é o tier cumulativo mais alto totalmente satisfeito** (PASS) com todos os tiers
+abaixo também PASS. Pelo gate cumulativo, pare no primeiro tier BLOCKED: esse é o teto. Ex.: Bronze
+PASS + Prata PASS + Ouro BLOCKED ⇒ tier oficial = **Prata**, e os IDs `❌`/`BLOCKED` de Ouro são o
+que falta para subir. Se nem Bronze passa ⇒ **Sem Nota**.
+
+### Caminho de fallback — avaliar os gates pelos sinais já coletados
+
+Quando os scripts não estão disponíveis localmente, derive o tier dos sinais que você já coletou no
+Step 1 (CLAUDE.md, `.claude/`, CI, testes, higiene), aplicando o mesmo gate cumulativo (todos os
+critérios do tier + todos os anteriores; sem compensação). Avalie tier a tier e pare no primeiro
+incompleto. Mapa rápido dos gates binários mais decisivos:
+
+- **Bronze** — `CLAUDE.md` na raiz (BRZ-1.1), `README.md` (BRZ-2.1), lock file (BRZ-2.2),
+  `.gitignore` com build + secrets (BRZ-10.1), sem secrets hardcoded (BRZ-10.2).
+- **Prata** — CLAUDE.md com seções básicas preenchidas (SLV-1.2/1.3), `.env.example` (SLV-2.3),
+  comandos one-liner + subset de teste (SLV-2.4/2.5), linter/formatter/type-checker/`.editorconfig`
+  (SLV-4.1–4.4), framework + arquivos de teste (SLV-5.1–5.4), CI com test+lint (SLV-6.1–6.3),
+  PR template + `CONTRIBUTING.md` (SLV-6.4/6.5), `.claude/` (SLV-7.1), `CODEOWNERS` (SLV-8.1).
+- **Ouro** — CLAUDE.md GOOD em todas as seções + progressive disclosure < 300 linhas (GLD-1.4–1.7),
+  runtime fixado (GLD-2.7), container (GLD-2.8), `.claude/docs/architecture.md` + coding-standards
+  (GLD-3.x/4.5), pre-commit hooks (GLD-4.6), coverage gate + E2E + mocking (GLD-5.5–5.8), CI build +
+  gates bloqueantes + branch protection + issue templates (GLD-6.6–6.10), `settings.json` com
+  permissões + hook + `.claude/docs/` (GLD-7.2–7.4), GitHub/Linear MCP (GLD-8.2–8.4), logging +
+  pitfalls (GLD-9.1/9.2), `SECURITY.md` (GLD-10.3).
+- **Platina** — personas de agents precisas (PLT-1.8), `.devcontainer/` (PLT-2.9), domínio/linguagem
+  ubíqua/DDD (PLT-3.6–3.8), padrões operacionais (PLT-4.7), `.claude/agents/` (PLT-7.5),
+  agent-readiness-report não-stale (PLT-7.6), browser MCP (PLT-8.5), observabilidade + `lessons.md`
+  (PLT-9.3/9.4), Dependabot/Renovate (PLT-10.4), security scanning no CI (PLT-10.5).
+
+O fallback é menos preciso que os scripts (critérios `Qualitativo/AI` dependem do seu julgamento).
+Marque o tier como **estimado** no relatório quando vier do fallback.
+
+### Bypasses confirmados
+
+Respeite os bypasses do spec quando o tipo do repo os justifica — recomende o bypass e **anote-o**
+(o tier oficial só sobe com o bypass registrado):
+
+- **Sem UI** (lib/CLI/backend puro, sem `.tsx`/`.jsx`/rotas de frontend) → dispensa GLD-5.6 (E2E)
+  e PLT-8.5 (browser MCP). Flags de script: `--bypass-no-ui`.
+- **Sem infra externa** (sem `docker-compose`, banco, cache) → dispensa GLD-2.8 (container).
+  Flag: `--bypass-no-infra`.
+- **Docs-only / configuração pura** (sem source files) → dispensa coverage, E2E, build, deploy.
+  Flags: `--bypass-pure-docs`. Os scripts auto-detectam via `.agent-readiness.yml` (`repo-type: docs-only`)
+  ou ausência de source files; confirme antes de aplicar.
+- **Baixa complexidade** (CLI/script simples) → dispensa responsabilidades de camada, domínio, DDD.
+  Flag: `--bypass-low-complexity`.
+
+Bypass é **recomendado pela ferramenta, confirmado por você** — registre a justificativa no relatório.
+
+---
+
 ## Step 3 — Classificar
 
 Some as 7 dimensões e classifique:
@@ -260,6 +348,7 @@ Devolva exatamente neste formato (o command `/agentic-scout` persiste no vault):
 <stack real> | complexidade: low|medium|high|extreme
 
 ### Score: <total>/100 — <classificação>
+**Tier oficial:** <Bronze|Prata|Ouro|Platina|Sem Nota> <(estimado, via fallback — se sem scripts) (bypasses confirmados: <...>)>
 <delta vs auditoria anterior, se --compare>
 
 | Dimensão | Score | Nota |
@@ -277,6 +366,14 @@ Devolva exatamente neste formato (o command `/agentic-scout` persiste no vault):
 
 ### Dores
 - <problemas reais que travam uso agentico, impiedoso>
+
+### Caminho até Platina
+<critérios faltantes para subir de tier, por ID, com o artefato concreto que cada um exige.
+Liste primeiro o que falta para o PRÓXIMO tier (o que travou o gate atual), depois os PLT-*
+restantes até Platina. Cada item: `<ID> — <o que falta> — <artefato/path concreto>`.
+Anote bypasses confirmados. Se já em Platina, escreva "(já em Platina)".>
+- <ex: GLD-7.3 — falta hook do Claude Code — adicionar PostToolUse auto-format em .claude/settings.json>
+- <ex: PLT-9.4 — falta lessons.md — criar .claude/docs/lessons.md e mantê-lo por sessão>
 
 ### Plano de readiness (top 3, por ROI)
 1. <ação — path — dimensão que sobe>
