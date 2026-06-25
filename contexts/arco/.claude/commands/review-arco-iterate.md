@@ -1,6 +1,6 @@
 ---
 name: review-arco-iterate
-description: Itera as threads NÃO resolvidas de uma PR Arco/OlaIsaac (tipicamente do bot arco-pr-reviewer), verifica cada alegação contra o código real, aplica as correções pertinentes, e então responde + reage (👍/👎) + resolve as threads no GitHub, commita semanticamente e dá push. Diferente de /review-arco-answer (read-only), este comando ESCREVE no GitHub e no repo.
+description: Itera as threads NÃO resolvidas de uma PR Arco/OlaIsaac (tipicamente do bot arco-pr-reviewer), verifica cada alegação contra o código real, aplica as correções pertinentes, e então responde + reage (👍/👎) + resolve as threads no GitHub, commita semanticamente e dá push. Por padrão fica vigiando CI + novas rodadas do bot após o push até a PR assentar (modo watch default; --once desliga). Diferente de /review-arco-answer (read-only), este comando ESCREVE no GitHub e no repo.
 user_invocable: true
 ---
 
@@ -23,11 +23,13 @@ Roda independente dos outros. Pensado para PRs com rodadas do bot `arco-pr-revie
 | `/review-arco-iterate` (sem arg) | PR da branch atual do `pwd` |
 | `/review-arco-iterate 962` | PR #962 do repo do `pwd` atual |
 | `/review-arco-iterate https://github.com/classapp/communication-api/pull/962` | PR do URL informado |
-| `/review-arco-iterate 962 --auto` | Pula a confirmação e executa o fluxo completo direto (default da confirmação = "postar tudo") |
-| `/review-arco-iterate 962 --watch` | Roda a 1ª rodada e **fica vivo** monitorando novas rodadas do bot + o CI da PR até ela assentar/mergear (ver "Modo WATCH") |
+| `/review-arco-iterate 962 --auto` | Pula a confirmação interativa da 1ª passada e executa o fluxo completo direto (default da confirmação = "postar tudo") |
+| `/review-arco-iterate 962 --once` | **Desliga o watch** (alias `--no-watch`): roda só uma passada e termina após o push, sem monitorar CI/novas rodadas (comportamento legado) |
 | `/review-arco-iterate 962 --agents-on` | Ativa o pipeline de agents especializados do repo para enriquecer a fase de verificação (ver passo 2b) |
 
-As flags `--auto`, `--watch` e `--agents-on` (alias `-aon`) podem aparecer em qualquer posição dos argumentos e combinadas entre si. `--watch` **implica `--auto`** em todas as rodadas. Quando `--agents-on` está presente junto com `--watch`, o pipeline de agents é ativado em todas as rodadas do watch.
+> **O watch é o default.** Depois da 1ª passada e do push, o comando fica vivo monitorando CI + novas rodadas do bot `arco-pr-reviewer` até a PR assentar (CI verde + nada novo) ou mergear. Use `--once` quando quiser só fechar a rodada atual e sair.
+
+As flags `--auto`, `--once` (alias `--no-watch`) e `--agents-on` (alias `-aon`) podem aparecer em qualquer posição dos argumentos e combinadas entre si. As **rodadas subsequentes do watch rodam em `--auto`** (aplicam + postam + resolvem + commitam + pusham sozinhas, já que o usuário tipicamente saiu); a 1ª passada ainda passa pela confirmação interativa, a menos que `--auto`. `--once` desliga o watch (uma passada e termina). Quando `--agents-on` está presente, o pipeline de agents é ativado em todas as rodadas.
 
 ## Ordem de execução OBRIGATÓRIA (NÃO reordenar)
 
@@ -56,14 +58,14 @@ A confirmação interativa (passo 6) fica ENTRE a fase 2 (aplicar correções) e
 
 ```bash
 gh auth status           # se falhar, abortar pedindo `gh auth login`
-# parse args: separar PR-spec de --auto / --watch / --agents-on / -aon
-# Detectar flags:
-AUTO=false; WATCH=false; AGENTS_ON=false
+# parse args: separar PR-spec de --auto / --once / --no-watch / --agents-on / -aon
+# Detectar flags. WATCH é o DEFAULT (ligado); --once/--no-watch desliga.
+AUTO=false; WATCH=true; AGENTS_ON=false
 for arg in "$@"; do
   case "$arg" in
-    --auto)         AUTO=true ;;
-    --watch)        WATCH=true; AUTO=true ;;
-    --agents-on|-aon) AGENTS_ON=true ;;
+    --auto)            AUTO=true ;;
+    --once|--no-watch) WATCH=false ;;
+    --agents-on|-aon)  AGENTS_ON=true ;;
   esac
 done
 # URL  -> {owner}/{repo}/pull/{number}
@@ -281,9 +283,9 @@ O GitHub renderiza markdown nas réplicas. NÃO postar identificadores e código
 
 ---
 
-## Modo WATCH (`--watch`)
+## Modo WATCH (default; desligue com `--once`)
 
-> Sem `--watch`, o comando roda **uma passada e termina** (ver Notas finais). Com `--watch`, ele faz a 1ª passada normalmente e **fica vivo** monitorando a PR até ela assentar ou mergear, para não deixar a rodada morrer nem esquecer que precisa ser fechada.
+> O watch é o comportamento **padrão**: o comando faz a 1ª passada normalmente e, após o push, **fica vivo** monitorando a PR (CI + novas rodadas do bot) até ela assentar ou mergear, para não deixar a rodada morrer nem esquecer que precisa ser fechada. Use `--once` (alias `--no-watch`) para rodar só uma passada e terminar após o push.
 
 ### Quando o usuário pediu
 Cenário típico: o usuário fechou a 1ª rodada de threads e **vai sair**. Quer que o comando:
@@ -291,7 +293,7 @@ Cenário típico: o usuário fechou a 1ª rodada de threads e **vai sair**. Quer
 2. **Monitore o CI** da PR (GitHub Actions) e avise/aja quando quebrar.
 3. Não esqueça: mantenha a sessão acordada com cadência sã até a PR assentar.
 
-`--watch` **implica `--auto`**: cada rodada subsequente aplica + posta + resolve + commita + pusha sozinha (assume a opção 1 da confirmação). Verificação contra o código real continua **obrigatória** em toda rodada, watch não relaxa o rigor anti-falso-positivo.
+As **rodadas subsequentes do watch rodam em `--auto`**: cada uma aplica + posta + resolve + commita + pusha sozinha (assume a opção 1 da confirmação), já que o usuário tipicamente saiu. A 1ª passada mantém a confirmação interativa, a menos que `--auto`. Verificação contra o código real continua **obrigatória** em toda rodada, watch não relaxa o rigor anti-falso-positivo.
 
 ### Estado persistente (não esquecer entre wakes)
 Mantenha um arquivo de estado por PR para sobreviver aos `ScheduleWakeup` e às janelas de contexto. Caminho: `.git/arco-watch-pr-<PR_NUMBER>.json` no checkout (fica fora do versionamento, dentro de `.git/`). Campos:
@@ -349,7 +351,7 @@ Use `ScheduleWakeup` ao fim de cada tick para reabrir a sessão. A escolha do in
 - **CI vermelho aguardando resolução externa**: **1200s**. Já reportei; só re-checo se mudou.
 - Nunca 300s (pior dos dois mundos). O `reason` do wake deve ser específico: "watch PR #962: CI rodando pós-push, re-checo em 270s".
 
-Passe o **mesmo input** (`/review-arco-iterate <pr> --watch`) de volta no `prompt` do `ScheduleWakeup`, para o próximo firing reentrar no watch. Omita o `ScheduleWakeup` apenas nas condições de saída.
+Passe o **mesmo input** (`/review-arco-iterate <pr>`, que já reentra no watch por ser o default) de volta no `prompt` do `ScheduleWakeup`, para o próximo firing reentrar no watch. Omita o `ScheduleWakeup` apenas nas condições de saída.
 
 ### Hook Slack (feed de status, opcional)
 Se o feed de PRs no Slack estiver configurado (ver plano em `~/.notes/1-contexts/arco/plans/*-slack-pr-status-feed.md`), emita uma atualização a cada **transição** relevante: `nova-rodada-fechada`, `ci-vermelho`, `ci-corrigido-tentativa`, `ci-verde`, `assentou`, `mergeada`. Use o updater do feed (canvas vivo + ping no thread). Se o feed não estiver configurado, **pule silenciosamente** o hook, o watch funciona sem ele.
@@ -359,6 +361,6 @@ Se o feed de PRs no Slack estiver configurado (ver plano em `~/.notes/1-contexts
 ## Notas finais
 
 - Verificação vem antes de tudo: nunca aceitar um comentário do bot sem confirmar a alegação no código real. Vale igual dentro do modo WATCH.
-- **Sem `--watch`**: roda UMA passada e termina. Não fica em loop esperando a próxima rodada do bot — se o bot comentar de novo, o usuário invoca o comando outra vez. **Com `--watch`**: fica vivo monitorando até a PR assentar/mergear (ver "Modo WATCH").
+- **Watch é o default**: após a 1ª passada e o push, fica vivo monitorando CI + novas rodadas do bot até a PR assentar/mergear (ver "Modo WATCH"). Use **`--once`** (alias `--no-watch`) para o comportamento legado de uma passada só (não fica em loop; se o bot recomentar, o usuário reinvoca).
 - Se `gh` não estiver autenticado, pedir `gh auth login` e abortar.
 - Se o quality gate falhar (typecheck/lint/teste), **não** avançar para postar/pushar: reportar a falha e parar para o usuário decidir.
