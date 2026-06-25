@@ -3,8 +3,10 @@ name: agentic-scout
 description: >
   Diagnóstico de maturidade agêntica de um repo do workspace Isaac. Delega ao
   agent arco-agentic-scouter, que pontua o repo em 7 dimensões (total 100),
-  classifica em 5 níveis (not-ready → exemplary), e produz glórias, dores, plano
-  de readiness e veredito. Persiste a auditoria em ~/.notes/6-audits/. Use antes
+  classifica em 5 níveis (not-ready → exemplary), cross-mapeia no tier oficial do
+  Agent Readiness Score (Bronze/Prata/Ouro/Platina + caminho até Platina), e
+  produz glórias, dores, plano de readiness e veredito. Persiste a auditoria em
+  ~/.notes/6-audits/. Use antes
   de investir tempo num repo (baseline), após melhorias (validação via --compare),
   ou em rotina de saúde do workspace. NÃO use para review de PR/doc (use /review-arco)
   nem para implementar feature (use /workflow).
@@ -120,7 +122,9 @@ O corpo é o `SCOUT_REPORT` renderizado.
 Mostre ao usuário, em formato enxuto:
 
 - Score total + classificação (+ delta se `--compare`)
+- O tier oficial (Agent Readiness Score) + bypasses confirmados
 - A tabela das 7 dimensões
+- O caminho até Platina (critérios faltantes por ID)
 - Top 3 do plano de readiness
 - O veredito Maria Bonita
 - O path da auditoria salva no vault
