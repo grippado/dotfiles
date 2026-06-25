@@ -1,12 +1,37 @@
 ---
 name: review-arco
-description: Revisa uma PR (ou branch atual vs main) no contexto Arco/OlaIsaac e persiste o review como arquivo .md no Obsidian vault em ~/.notes/pr-reviews/ (contexto arco no frontmatter)
+description: Orquestrador de review do time Arco/OlaIsaac, despachado por verbo. `pr` revisa PR/branch (subagent arco-pr-reviewer, grava em ~/.notes/pr-reviews/). `doc` revisa documento/RFC do Google Docs (subagent arco-doc-reviewer, grava em ~/.notes/0-inbox/). `auto` pré-explora um artefato desconhecido e propõe o pipeline. Sem verbo, infere pelo formato do target (backward-compat).
 user_invocable: true
 ---
 
 # /review-arco
 
-Skill orquestradora de PR review para o time Arco. Coleta contexto, delega análise ao subagent `arco-pr-reviewer`, e persiste o resultado num arquivo markdown padronizado no vault Obsidian do Gabriel.
+Skill orquestradora de review para o time Arco, **despachada por verbo**. Coleta contexto, delega a análise ao subagent de review do verbo, opcionalmente enriquece com os agents especializados do(s) repo(s) referenciado(s), e persiste o resultado num arquivo markdown padronizado no vault Obsidian do Gabriel.
+
+## Verbos
+
+| Verbo | Target | Reviewer | Saída no vault |
+|-------|--------|----------|----------------|
+| `pr` | PR number / URL de PR / branch atual | `arco-pr-reviewer` | `pr-reviews/` |
+| `doc` | URL do Google Docs / Drive | `arco-doc-reviewer` | `0-inbox/` |
+| `auto` | qualquer outro artefato (outra URL, path local, texto) | escolhido na pré-exploração | conforme o tipo |
+
+**Resolução de verbo (Step 0, sempre primeiro):**
+
+1. Se o 1º token não-flag ∈ {`pr`, `doc`, `auto`}, consome como verbo; o resto é o target.
+2. Sem verbo explícito → **inferir** (backward-compat, não quebra o uso antigo):
+   - vazio / numérico / URL `github.com/.../pull/...` → `pr`
+   - URL `docs.google.com` ou `drive.google.com` → `doc`
+   - qualquer outra coisa → `auto`
+3. A flag `--agents-on` / `-aon` continua válida em qualquer posição e em qualquer verbo.
+
+Depois de resolver o verbo, salte para o pipeline correspondente:
+- `pr` → **Pipeline `pr`** (abaixo; é o fluxo histórico, steps 1 a 8)
+- `doc` → **Pipeline `doc`**
+- `auto` → **Pipeline `auto`**
+
+Em **todos** os verbos, após detectar o(s) repo(s) envolvido(s), aplica-se a etapa
+**Bootstrap de repo-owner** quando um repo não tiver suite de agents no ambiente.
 
 **Out of scope (NUNCA faça sem confirmação explícita):**
 
@@ -19,16 +44,21 @@ Skill orquestradora de PR review para o time Arco. Coleta contexto, delega anál
 
 ## Inputs aceitos
 
-| Forma | Significado |
-|-------|-------------|
-| `/review-arco` (sem arg) | Branch atual do `pwd` vs `main` |
-| `/review-arco 790` | PR #790 do repo do `pwd` atual |
-| `/review-arco https://github.com/OlaIsaac/backoffice-bff/pull/790` | PR do URL informado (qualquer repo OlaIsaac/classapp) |
-| `/review-arco https://github.com/classapp/communication-api/pull/698` | idem, cross-repo |
+| Forma | Verbo resolvido | Significado |
+|-------|-----------------|-------------|
+| `/review-arco` (sem arg) | `pr` (inferido) | Branch atual do `pwd` vs `main` |
+| `/review-arco 790` | `pr` (inferido) | PR #790 do repo do `pwd` atual |
+| `/review-arco pr 790` | `pr` (explícito) | idem |
+| `/review-arco https://github.com/OlaIsaac/backoffice-bff/pull/790` | `pr` (inferido) | PR do URL (qualquer repo OlaIsaac/classapp) |
+| `/review-arco doc https://docs.google.com/document/d/.../edit` | `doc` (explícito) | Review de documento/RFC |
+| `/review-arco https://docs.google.com/document/d/.../edit` | `doc` (inferido) | idem |
+| `/review-arco auto <algo>` | `auto` (explícito) | Pré-exploração + proposta de pipeline |
 
-**Flag opcional:** `--agents-on` (alias `-aon`) pode aparecer em qualquer posição dos argumentos (antes ou depois do PR number/URL). Quando ausente: comportamento atual inalterado. Quando presente: ativa o pipeline de agents especializados do repo em benchmark mode (ver passo 3c).
+**Flag opcional:** `--agents-on` (alias `-aon`) pode aparecer em qualquer posição (antes ou depois do verbo/target), em qualquer verbo. Quando ausente: comportamento padrão. Quando presente: ativa o pipeline de agents especializados do(s) repo(s) referenciado(s) em benchmark mode (ver passo 3c).
 
-## Fluxo de execução
+## Pipeline `pr` (review de PR/branch)
+
+Fluxo histórico do `/review-arco`. Os steps 1 a 8 abaixo constituem o pipeline do verbo `pr`.
 
 ### 1. Resolver o target
 
@@ -452,8 +482,254 @@ Rascunhos salvos em {caminho}.
 
 **Nunca** executar os comandos `gh api ... POST` do output — o arquivo é draft-only para revisão antes de postar.
 
+## Pipeline `doc` (review de documento / RFC)
+
+Espelha o pipeline `pr` em estrutura (coletar → delegar → gravar → ofertar ação), mas o artefato é
+um documento de prosa, não um diff. Out of scope (mesma disciplina do `pr`): nunca postar/editar no
+Google Doc, nunca commitar/mexer em repo, exceto a etapa Bootstrap (que é opt-in e mira só o
+dotfiles-ai). Escreve **apenas** o arquivo no vault.
+
+### d1. Resolver o target e buscar o doc
+
+Extrair o `docId` do URL (`docs.google.com/document/d/{docId}/...` ou `drive.google.com/.../d/{docId}`).
+
+Buscar metadados e conteúdo via Drive MCP:
+
+```
+mcp__claude_ai_Google_Drive__get_file_metadata  { fileId: docId }
+mcp__claude_ai_Google_Drive__read_file_content  { fileId: docId, includeComments: true }
+```
+
+Guardar: `DOC_TITLE`, `DOC_AUTHOR` (responsável, se aparecer no corpo/metadata), `DOC_UPDATED`
+(última atualização), `DOC_TEXT` (conteúdo), `DOC_COMMENTS` (comentários já existentes — análogo às
+threads de PR). Se a leitura falhar (sem acesso / mime não suportado), abortar com mensagem clara e
+**não** gravar arquivo parcial.
+
+### d2. Rodadas anteriores (vault)
+
+```bash
+ls ~/.notes/0-inbox/ | grep -E "review-doc.*\.md$" | sort
+```
+
+Se houver review anterior do mesmo doc (mesmo `source_url` no frontmatter), ler a seção
+`## Comentários de Review` e guardar como `PREV_REVIEW_COMMENTS` (instrução ao subagent: não repetir
+findings já cobertos). Senão, `null`.
+
+### d3. Detectar repos referenciados + checkouts locais
+
+Varrer `DOC_TEXT` por sinais de repo: nomes de repo do workspace (sigaweb, backoffice,
+gravity-design-system, communication-api, etc.), nomes de pacote (`@gravity/*`), e paths de arquivo
+(`assets/frontend/...`, `.webpack/...`). Para cada repo detectado, resolver o checkout local em
+`~/www/isaac/<repo-slug>` (confirmar com `ls`). Guardar `REFERENCED_REPOS` = lista de
+`{slug, checkout_path|null}`.
+
+Para cada repo com suite de agents no ambiente e `--agents-on` presente, invocar o `repo-owner`
+correspondente (mesma mecânica do passo 3c do pipeline `pr`), passando os trechos do doc que falam
+daquele repo como `scope`, e guardar os `AGENT_REPORT`(s). Repos sem suite → sem enrichment; o
+subagent lê o checkout direto. (A oferta de criar a suite acontece na etapa **Bootstrap de
+repo-owner**, ao final.)
+
+### d4. Delegar ao `arco-doc-reviewer`
+
+Use a Task tool com `subagent_type: arco-doc-reviewer`, passando:
+- `DOC_TEXT`, metadados (`DOC_TITLE`, `DOC_AUTHOR`, `DOC_UPDATED`, URL)
+- `DOC_COMMENTS` (comentários existentes — não repetir pontos já levantados)
+- `PREV_REVIEW_COMMENTS`
+- `REFERENCED_REPOS` com os checkout paths (instrução: verificar toda afirmação de código contra o
+  arquivo real)
+- `AGENT_REPORT`(s) quando houver (como evidência, não verdade cega)
+
+O subagent retorna `SUMARIO`, `COMENTARIOS` (cada um com **Trecho no doc** + **Comentário**, ancorado
+em `§seção "trecho verbatim"`), `CHECKLIST`, `VEREDITO`, `STATUS`, `PRIORIDADE`, `TLDR`, `RESUMO_EXEC`.
+Guardar como `FINAL_REPORT`. Se o output vier mal formatado, mostrar o erro e não gravar.
+
+### d5. Computar nome do arquivo
+
+- Slug do doc = título em kebab-case (sem stopwords longas).
+- Filename: `YYYY-MM-DD-HHMM-review-doc-{slug}.md` (HHMM da hora local).
+- Re-runs no mesmo doc/dia: sufixar `-v2`, `-v3`.
+- Path: `~/.notes/0-inbox/{filename}`.
+
+### d6. Renderizar template e gravar
+
+```markdown
+---
+date: "{YYYY-MM-DD}"
+time: "{HH:MM}"
+type: "doc-review"
+context: "arco"
+execution_status: "open"
+source_url: "{url do doc}"
+tags: [doc-review, review-arco, {repos-referenciados-slugs}, {tema-opcional}]
+parent: "[[_index]]"
+---
+
+# Doc Review: {DOC_TITLE}
+
+**Doc:** {url}
+**Autor:** {DOC_AUTHOR}  ·  **Última atualização:** {DOC_UPDATED}
+**Repos referenciados:** {lista de slugs, ou "(nenhum detectado)"}
+**Revisado em:** {YYYY-MM-DD}
+**Status atual:** {situação do doc, se declarada — "Em andamento", "Limite p/ comentários: ...", etc.}
+
+## Resumo
+
+{seção SUMARIO do subagent}
+
+## Legenda
+
+| Emoji | Tipo | Marcar no doc? |
+|-------|------|----------------|
+| 🔴 | Crítico | Sim, obrigatório |
+| 🟡 | Necessário | Sim, recomendado |
+| 🔵 | Sugestão | A critério do revisor |
+| 🟢 | Elogio | Opcional |
+| ⚠️ | Breaking change | Sim, obrigatório |
+| 💭 | Nota interna | Não |
+
+## Comentários de Review
+
+{seção COMENTARIOS do subagent — cada finding com header `### {emoji} §{seção} "trecho" — título`,
+seguido de **Trecho no doc:** e **Comentário:**}
+
+## Checklist antes de aceitar
+
+{seção CHECKLIST do subagent — omitir se vazia}
+
+## Decisão
+
+**{tradução do STATUS para PT-BR}** — {texto do veredito}
+
+Prioridade dos comentários:
+
+1. {item 1 da PRIORIDADE}
+2. {...}
+
+## TL;DR
+
+{seção TLDR do subagent}
+
+## Resumo Executivo
+
+{seção RESUMO_EXEC do subagent}
+```
+
+Tradução do STATUS: `approved` → "Aprovar"; `approved-with-suggestions` → "Aprovar com sugestões";
+`approved-with-changes` → "Aprovar com mudanças"; `request-changes` → "Solicitar mudanças".
+
+Gravar com a Write tool no path calculado.
+
+### d7. Resposta no chat
+
+```
+Review do doc salvo em {caminho-completo}.
+
+Veredito: {STATUS} — {1 frase do veredito}.
+```
+
+Não repetir o conteúdo do review no chat. O arquivo é a fonte de verdade.
+
+### d8. Ação pós-review (doc)
+
+Documentos não aceitam comentário inline via API neste fluxo. Após gravar, oferecer via
+`AskUserQuestion` (single-select):
+
+- **Header:** `Ação no doc?`
+- **Question:** `O que fazer com os comentários do review do doc?`
+- **Options:**
+  1. `Gerar bloco "comentários para colar no Doc" (Recomendado)` — anexa ao final do arquivo do
+     vault um bloco com os 🔴 + 🟡 + ⚠️ + 🟢 formatados pra colar manualmente no Google Doc (cada um
+     com o trecho a marcar). Não posta nada.
+  2. `Não fazer nada` — review fica só no Obsidian.
+
+Em seguida (independente da escolha), seguir para a etapa **Bootstrap de repo-owner** se algum repo
+referenciado não tiver suite no ambiente.
+
+## Pipeline `auto` (artefato desconhecido)
+
+Para targets que não são PR nem Google Doc. Objetivo: classificar o artefato, propor um pipeline de
+review e confirmar com o usuário antes de rodar (nunca chutar).
+
+### a1. Classificar o target
+
+- Drive (sheet/slides/pdf): tentar `get_file_metadata` pra ler o mime.
+- URL não-GitHub: `WebFetch` pra inspecionar tipo/conteúdo.
+- Path local: detectar se é doc (`.md`, `.txt`), código, ou outro.
+- Texto livre: tratar como pedido de review de um artefato a ser apontado.
+
+Pode delegar a classificação a um `general-purpose` curto quando precisar inspecionar conteúdo.
+
+### a2. Propor pipeline e confirmar
+
+Via `AskUserQuestion`, apresentar a classificação + o pipeline proposto:
+- método de fetch, reviewer (reusar `arco-doc-reviewer` pra qualquer artefato textual; `arco-pr-reviewer`
+  pra diff/código), repos pra ancorar, e diretório de saída.
+
+Se o tipo não tiver suporte real (ex.: Figma, planilha como dado), **dizer isso com honestidade** e
+propor o encaixe mais próximo (ex.: revisar o texto/descrição). Só rodar após confirmação.
+
+### a3. Rodar
+
+Roteia pro pipeline escolhido (`doc` na maioria dos casos textuais) reusando d4–d8.
+
+## Bootstrap de repo-owner (repo sem suite no ambiente)
+
+Acionada em **qualquer verbo**, depois de detectar o(s) repo(s) envolvido(s) e **após gravar a nota**.
+
+Para cada repo referenciado/alvo, checar:
+
+```bash
+REPO_OWNER_PATH="$HOME/.dotfiles-ai/claude/agents/isaac/<repo-slug>/repo-owner.md"
+```
+
+A checagem é **só no ambiente do Gabriel** (`~/.dotfiles-ai`), independente de o repo origin já ter
+ou não `.claude/agents/`. Se o `repo-owner.md` existir, nada a fazer. Se **não** existir, o review já
+rodou normalmente (lendo o checkout direto) e agora oferece bootstrapar a suite via `AskUserQuestion`
+(single-select):
+
+- **Header:** `Bootstrap de agents?`
+- **Question:** `O repo \`<slug>\` não tem suite de agents no seu ambiente. Quer gerar um repo-owner + AGENT.md (e specialists base) seguindo o AGENT_SPEC?`
+- **Options:**
+  1. `Gerar e abrir PR draft no dotfiles-ai (Recomendado)` — gera a suite e abre PR draft.
+  2. `Só gerar localmente (sem PR)` — escreve os arquivos, sem branch/commit/PR.
+  3. `Agora não` — não faz nada (fica registrado na nota como sugestão).
+
+**Geração (opções 1 e 2)** segue o checklist do `AGENT_SPEC §7`
+(`~/.dotfiles-ai/claude/agents/isaac/AGENT_SPEC.md`):
+
+1. Confirmar repo-slug: `cd ~/www/isaac/<slug> && gh repo view --json name -q .name`.
+2. Ler `CLAUDE.md` do repo + detectar a stack (package.json / go.mod / etc.).
+3. Delegar a autoria a um `general-purpose` passando o `AGENT_SPEC.md` como espec, instruindo a
+   escrever em `~/.dotfiles-ai/claude/agents/isaac/<slug>/`: `AGENT.md` (índice + grafo de deps),
+   `repo-owner.md` (orquestrador adaptado à estrutura real, **não** copiado verbatim de outro repo),
+   e specialists base conforme o tipo de repo (ler código real antes de cada specialist).
+
+**PR draft (só opção 1)** — alvo é o **dotfiles-ai** (tooling pessoal, fase 1 do AGENT_SPEC), nunca o
+repo origin (fase 2 = decisão de time):
+
+```bash
+cd ~/.dotfiles-ai
+git checkout -b feat/agents-<slug>-suite
+git add claude/agents/isaac/<slug>/
+git commit -m "$(cat <<'EOF'
+feat(agents): add <slug> agent suite
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+EOF
+)"
+git push -u origin feat/agents-<slug>-suite
+gh pr create --draft --repo grippado/dotfiles-ai --base main \
+  --title "feat(agents): suite de agents para <slug>" \
+  --body-file <arquivo-de-corpo>
+```
+
+Corpo da PR e título sem em-dashes (texto externo). Registrar na resposta do chat o link da PR
+draft (ou o path dos arquivos gerados, na opção 2).
+
 ## Notas finais
 
 - Sempre PT-BR com acentuação correta no conteúdo do review (frontmatter pode ficar em inglês onde já era padrão: `type`, `status`)
+- Sem em-dashes (—) em qualquer texto que o usuário possa colar/postar (comentários, corpo de PR)
 - Se o subagent retornar erro ou output mal formatado, mostre o erro e **não** grave arquivo parcial
-- Se faltar `gh` autenticado, peça ao usuário pra rodar `gh auth login` e aborte
+- Se faltar `gh` autenticado (pipelines `pr` e Bootstrap), peça ao usuário pra rodar `gh auth login` e aborte
+- Se o Drive MCP não estiver disponível/autenticado (pipeline `doc`), avise e aborte sem gravar parcial
