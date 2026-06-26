@@ -1,5 +1,5 @@
 export ZSH="${HOME}/.oh-my-zsh"
-export DFL="${HOME}/.dotfiles"
+export CANGACO="${HOME}/cangaco"; export DFL="$CANGACO"
 
 # Load secrets
 source $DFL/configs/secrets.sh
