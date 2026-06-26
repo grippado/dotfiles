@@ -1,0 +1,7 @@
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Slack profiler: perfil real é local-only (inclui agregados de DM). Só o .example é versionado.
+machines/*/slack-channels.json

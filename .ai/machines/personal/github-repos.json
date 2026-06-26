@@ -1,0 +1,28 @@
+{
+  "_doc": "Whitelist de repos GitHub vigiados pela Frente 0.6 do /organize (camada repo-scoped: atividade do dia + PRs dos outros + bola comigo). A camada @me global (review-requested/author/assigned) roda em qualquer repo, independente desta lista. Lido por-maquina. So nomes de repo, sem segredo. Ajuste a vontade.",
+  "$schema_version": 1,
+  "contexts": {
+    "arco": [
+      "OlaIsaac/communication-api",
+      "OlaIsaac/backoffice",
+      "OlaIsaac/backoffice-bff",
+      "OlaIsaac/rf-monorepo",
+      "OlaIsaac/gravity-design-system",
+      "OlaIsaac/technical-refining",
+      "OlaIsaac/payment-api",
+      "OlaIsaac/sorting-hat",
+      "OlaIsaac/e2e-tests",
+      "OlaIsaac/school-api"
+    ],
+    "flagbridge": [
+      "flagbridge/flagbridge"
+    ]
+  },
+  "_doc_org_overrides": "Quando um repo da camada @me global cai fora dos contexts acima, roteia pelo owner: OlaIsaac->arco, flagbridge->flagbridge. Owner desconhecido -> inbox.",
+  "org_overrides": {
+    "OlaIsaac": "arco",
+    "classapp": "arco",
+    "flagbridge": "flagbridge",
+    "grippado": "pessoal"
+  }
+}

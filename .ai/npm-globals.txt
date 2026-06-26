@@ -1,0 +1,9 @@
+# fnm-sync-globals registry
+# One npm package per line. Lines starting with # are comments.
+# Use scoped names like @scope/pkg for scoped packages.
+# Add packages with: fnm-sync-globals add <pkg>
+# Or auto-detect packages already installed in 2+ fnm versions:
+#   fnm-sync-globals auto-populate
+ccstatusline  # auto-detected: present in 2 versions (2026-05-14)
+yarn  # auto-detected: present in 7 versions (2026-05-14)
+pnpm  # auto-detected: present in 9 versions (2026-05-14)

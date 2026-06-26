@@ -1,0 +1,6 @@
+{
+  "_doc": "Identidade do Linear desta maquina, lida pela Frente 0.9 do /organize (o Linear MCP nao expoe viewer/me de forma estavel; isto evita o lookup e fixa o filtro assignee=eu). So identificadores, sem segredo.",
+  "user_id": "8d752caf-b078-4eeb-971b-14300f3ae472",
+  "email": "gabriel.gripp@isaac.com.br",
+  "name": "Gabriel Gripp"
+}

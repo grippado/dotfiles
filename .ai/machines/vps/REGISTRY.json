@@ -1,0 +1,11 @@
+{
+  "_doc": "Source of truth for Claude Atlas scope registry. Edited by hand. Read by ~/.claude/bin/atlas-sync. See ~/.claude/ARCHITECTURE.md for full context. VPS = headless 24/7 service node (hq.gripp.link), Ubuntu 24. Service node, NOT a dev workstation — so no dev scopes (flagbridge, labor-city, declare-ui, isaac, gravity). Only the notes vault.",
+  "version": 2,
+  "scopes": {
+    "notes": {
+      "path": "~/.notes",
+      "claude_dir": ".claude",
+      "shared": false
+    }
+  }
+}

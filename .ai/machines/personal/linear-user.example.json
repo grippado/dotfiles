@@ -1,0 +1,6 @@
+{
+  "_doc": "Identidade do Linear por-maquina, lida pela Frente 0.9 do /organize (o Linear MCP nao expoe viewer/me). Copie pra linear-user.json e preencha. So identificadores, sem segredo.",
+  "user_id": "<linear_user_id_uuid>",
+  "email": "gabriel.gripp@isaac.com.br",
+  "name": "Gabriel Gripp"
+}

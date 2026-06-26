@@ -1,0 +1,40 @@
+{
+  "_doc": "Source of truth for Claude Atlas scope registry. Edited by hand. Read by ~/.claude/bin/atlas-sync. See ~/.claude/ARCHITECTURE.md for full context.",
+  "version": 2,
+  "scopes": {
+    "flagbridge": {
+      "path": "~/www/personal/flagbridge",
+      "claude_dir": ".claude",
+      "shared": false
+    },
+    "notes": {
+      "path": "~/.notes",
+      "claude_dir": ".claude",
+      "shared": false
+    },
+    "labor-city": {
+      "path": "~/www/personal/labor.city",
+      "claude_dir": ".claude",
+      "shared": false,
+      "_note": "slug uses hyphen; directory name has a dot. Switch to 'labor.city' if Claude Code accepts dots in command filenames."
+    },
+    "declare-ui": {
+      "path": "~/www/personal/declare-ui",
+      "claude_dir": ".claude",
+      "shared": false
+    },
+    "gravity-design-system": {
+      "path": "~/www/isaac/gravity-design-system",
+      "claude_dir": ".claude",
+      "shared": true,
+      "local_only": true,
+      "_note": "Shared team repo (Arco/Isaac). Atlas is read-only here. local_only: true → não criar symlinks globais em ~/.claude/commands/; comandos só aparecem dentro do próprio repo (evita duplicação verb / verb:scope ao cd no repo)."
+    },
+    "isaac": {
+      "path": "~/www/isaac",
+      "claude_dir": null,
+      "shared": true,
+      "_note": "Cluster of team repos (backoffice, rf-monorepo, communication-api, payment-api, sorting-hat, backoffice-bff). Read-only. Sub-repos have their own .claude/ but Atlas does NOT recurse into them via this scope — and never modifies files there. See ARCHITECTURE.md §10 (SHARED-DEBT)."
+    }
+  }
+}

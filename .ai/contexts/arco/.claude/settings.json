@@ -1,0 +1,36 @@
+{
+  "_doc": "Arco workspace overlay. Activated when cwd is under /Users/grippado/www/isaac/*. Plugins and permissions here are SCOPED to this workspace only — they do not leak to global Claude sessions.",
+  "permissions": {
+    "defaultMode": "auto"
+  },
+  "enabledPlugins": {
+    "arco-default@olaisaac-arco-agents": true,
+    "core@arco-ai-plugins": true,
+    "linear@claude-plugins-official": true,
+    "slack@claude-plugins-official": true,
+    "code-review@claude-plugins-official": true,
+    "code-simplifier@claude-plugins-official": true,
+    "atomic-agents@claude-plugins-official": true,
+    "plugin-dev@claude-plugins-official": true
+  },
+  "extraKnownMarketplaces": {
+    "claude-plugins-official": {
+      "source": {
+        "source": "github",
+        "repo": "anthropics/claude-plugins-official"
+      }
+    },
+    "arco-ai-plugins": {
+      "source": {
+        "source": "git",
+        "url": "git@github.com:OlaIsaac/arco-ai-plugins.git"
+      }
+    },
+    "olaisaac-arco-agents": {
+      "source": {
+        "source": "directory",
+        "path": "/Users/grippado/www/isaac/arco-agents"
+      }
+    }
+  }
+}

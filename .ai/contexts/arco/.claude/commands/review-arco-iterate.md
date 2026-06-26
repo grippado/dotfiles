@@ -1,0 +1,366 @@
+---
+name: review-arco-iterate
+description: Itera as threads NÃO resolvidas de uma PR Arco/OlaIsaac (tipicamente do bot arco-pr-reviewer), verifica cada alegação contra o código real, aplica as correções pertinentes, e então responde + reage (👍/👎) + resolve as threads no GitHub, commita semanticamente e dá push. Por padrão fica vigiando CI + novas rodadas do bot após o push até a PR assentar (modo watch default; --once desliga). Diferente de /review-arco-answer (read-only), este comando ESCREVE no GitHub e no repo.
+user_invocable: true
+---
+
+# /review-arco-iterate
+
+Comando orquestrador para **fechar o loop** de uma rodada de review: lê as threads abertas, aplica o que é pertinente, responde/reage/resolve no GitHub, e atualiza a PR com commit + push.
+
+É o irmão "ativo" da família:
+
+- `/review-arco` — gera o review (read-only, salva no vault).
+- `/review-arco-answer` — redige rascunhos de réplicas (read-only, salva no vault, não posta).
+- `/review-arco-iterate` — **aplica + posta + resolve + commita + pusha** (este).
+
+Roda independente dos outros. Pensado para PRs com rodadas do bot `arco-pr-reviewer`, mas trata threads humanas também.
+
+## Inputs aceitos
+
+| Forma | Significado |
+|-------|-------------|
+| `/review-arco-iterate` (sem arg) | PR da branch atual do `pwd` |
+| `/review-arco-iterate 962` | PR #962 do repo do `pwd` atual |
+| `/review-arco-iterate https://github.com/classapp/communication-api/pull/962` | PR do URL informado |
+| `/review-arco-iterate 962 --auto` | Pula a confirmação interativa da 1ª passada e executa o fluxo completo direto (default da confirmação = "postar tudo") |
+| `/review-arco-iterate 962 --once` | **Desliga o watch** (alias `--no-watch`): roda só uma passada e termina após o push, sem monitorar CI/novas rodadas (comportamento legado) |
+| `/review-arco-iterate 962 --agents-on` | Ativa o pipeline de agents especializados do repo para enriquecer a fase de verificação (ver passo 2b) |
+
+> **O watch é o default.** Depois da 1ª passada e do push, o comando fica vivo monitorando CI + novas rodadas do bot `arco-pr-reviewer` até a PR assentar (CI verde + nada novo) ou mergear. Use `--once` quando quiser só fechar a rodada atual e sair.
+
+As flags `--auto`, `--once` (alias `--no-watch`) e `--agents-on` (alias `-aon`) podem aparecer em qualquer posição dos argumentos e combinadas entre si. As **rodadas subsequentes do watch rodam em `--auto`** (aplicam + postam + resolvem + commitam + pusham sozinhas, já que o usuário tipicamente saiu); a 1ª passada ainda passa pela confirmação interativa, a menos que `--auto`. `--once` desliga o watch (uma passada e termina). Quando `--agents-on` está presente, o pipeline de agents é ativado em todas as rodadas.
+
+## Ordem de execução OBRIGATÓRIA (NÃO reordenar)
+
+1. **Ler** as threads não resolvidas.
+2. **Planejar e executar** todas as correções pertinentes, mantendo os arquivos alterados no working tree.
+3. **Responder** as threads no GitHub, **reagir** (👍/👎) e **resolver** cada thread.
+4. **Commitar** semanticamente e **dar push**.
+
+> O push só pode acontecer DEPOIS do passo 3 completo (todas as threads endereçadas respondidas E resolvidas). Nunca pushar antes de fechar as threads.
+
+A confirmação interativa (passo 6) fica ENTRE a fase 2 (aplicar correções) e as fases 3-4 (postar + commitar): as correções locais são aplicadas primeiro (reversíveis), o plano completo é mostrado, e só então o usuário decide o que postar/pushar. Com `--auto`, pula a confirmação.
+
+## Out of scope (NUNCA faça)
+
+- Não aprovar nem mergear (`gh pr review --approve`, `gh pr merge`).
+- Não usar `event: APPROVE` / `REQUEST_CHANGES` em nada.
+- Não pushar para `main` nem trocar de branch sozinho.
+- Não resolver thread humana que esteja em `needs-discussion` (ver guardrail no passo 3).
+- Não retentar escrita em repo cross-org sem acesso — capturar o erro e reportar.
+
+---
+
+## Fluxo de execução
+
+### 1. Resolver o target + sanidade
+
+```bash
+gh auth status           # se falhar, abortar pedindo `gh auth login`
+# parse args: separar PR-spec de --auto / --once / --no-watch / --agents-on / -aon
+# Detectar flags. WATCH é o DEFAULT (ligado); --once/--no-watch desliga.
+AUTO=false; WATCH=true; AGENTS_ON=false
+for arg in "$@"; do
+  case "$arg" in
+    --auto)            AUTO=true ;;
+    --once|--no-watch) WATCH=false ;;
+    --agents-on|-aon)  AGENTS_ON=true ;;
+  esac
+done
+# URL  -> {owner}/{repo}/pull/{number}
+# número -> REPO_FULL=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+# sem arg ->
+#   PR_NUMBER=$(gh pr view --json number -q .number)
+#   REPO_FULL=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+```
+
+Cross-repo: se o `pwd` não for o checkout do repo alvo, **aborte** pedindo para `cd` no checkout local. Este comando precisa do working tree para aplicar correções e commitar, então só opera local.
+
+**Atenção a worktrees:** o checkout da PR pode estar em `.worktrees/<branch>/`. Confirme em qual diretório a branch da PR está (`git worktree list`) e opere lá. A branch local precisa casar com `headRefName` da PR.
+
+### 2. Coletar metadados + TODAS as threads (abertas e resolvidas)
+
+```bash
+gh pr view $PR_NUMBER --repo $REPO_FULL --json number,title,headRefName,baseRefName,url,state,isDraft
+```
+
+Buscar **todas** as threads via GraphQL (a REST não expõe `isResolved`). Buscar resolvidas também é essencial: elas formam o **corpus de referência** para o cross-reference do passo 3.
+
+```bash
+gh api graphql -f query='
+{
+  repository(owner: "OWNER", name: "REPO") {
+    pullRequest(number: PR) {
+      reviewThreads(first: 100) {
+        nodes {
+          id
+          isResolved
+          isOutdated
+          path
+          line
+          comments(first: 1) {
+            nodes { databaseId url author { login } createdAt body }
+          }
+        }
+      }
+    }
+  }
+}'
+```
+
+Particionar o resultado em dois conjuntos:
+
+- **Threads abertas** (`isResolved == false`) — as que serão endereçadas neste run. Guardar: `id` (NODE id `PRRT_...`, usado para resolver), `path`, `line`, `isOutdated`, e do primeiro comentário `databaseId` (reply/react), `url` (permalink), `author.login`, `body`.
+- **Corpus de referência** (`isResolved == true`) — guardar `url`, `path:line`, `author.login` e um resumo do ponto + veredito (ler o body; se truncado, `gh api repos/$REPO_FULL/pulls/comments/<databaseId>`). Esse corpus alimenta a detecção de sobreposição.
+
+Ler o body completo de um comentário quando truncado:
+
+```bash
+gh api repos/$REPO_FULL/pulls/comments/<databaseId> -q '.body'
+```
+
+Ler o body completo de um comentário quando truncado:
+
+```bash
+gh api repos/$REPO_FULL/pulls/comments/<databaseId> -q '.body'
+```
+
+**Top-level PR comments** (sem `path:line`) também contam como threads endereçáveis: `gh api repos/$REPO_FULL/issues/$PR_NUMBER/comments`. Eles não têm reply nativo (responder = novo issue comment) nem resolução; reações vão em `repos/$REPO_FULL/issues/comments/<id>/reactions`.
+
+**Pular threads triviais:** body só com aprovação (`LGTM`, `👍`, `:+1:`, `✅`) ou comentário do próprio autor sem réplica de terceiros.
+
+Se não sobrar nenhuma thread acionável, avise no chat e **termine** (não commitar nada).
+
+### 2b. Pipeline --agents-on (quando `AGENTS_ON == true`)
+
+Detectar o repo-slug e o caminho do repo-owner:
+
+```bash
+REPO_SLUG=$(gh repo view --json name -q .name)
+REPO_OWNER_PATH="$HOME/.dotfiles-ai/claude/agents/isaac/$REPO_SLUG/repo-owner.md"
+```
+
+Se `$REPO_OWNER_PATH` não existir:
+- Avise no chat: `nenhum agent especializado encontrado para <repo-slug>. Verificação de threads seguirá sem contexto adicional de agents.`
+- Defina `AGENTS_ON = false` e siga para o passo 3 normalmente.
+
+Se existir, invocar o `repo-owner` via Task tool passando:
+- Diff completo da PR (`gh pr diff $PR_NUMBER --repo $REPO_FULL`)
+- Metadados da PR (título, número, repo, branches, autor)
+- Lista de threads abertas coletadas no passo 2 (path, linha, body de cada comentário)
+- A flag `--agents-on`
+
+O repo-owner orquestra os agents especializados e retorna um `AGENT_REPORT` estruturado (Critical/Important/Notes + "Agents run"). Guardar `AGENT_REPORT` — ele é passado como contexto adicional no passo 3 para cada decisão de thread.
+
+### 3. Verificar e decidir cada thread (planejar)  · fase 1
+
+Para CADA thread aberta, ANTES de aceitar ou recusar:
+
+- **Verificar a alegação contra o código/testes/docs reais.** O `arco-pr-reviewer` produz falsos positivos com frequência (ex.: aponta perda de precisão num `bigint mode:'number'`, ou "mensagem some" num cenário que já tem teste). Leia o arquivo citado, os testes adjacentes e a doc do endpoint antes de concluir. Reviewers humanos erram menos, mas o mesmo rigor se aplica.
+- **Quando `AGENTS_ON == true`:** consultar o `AGENT_REPORT` (passo 2b) ao verificar cada thread. Se o AGENT_REPORT cobrir o mesmo ponto da thread (mesmo arquivo/linha/tema), usar os findings dos specialists como evidência adicional a favor ou contra a alegação. Se o AGENT_REPORT contradisser o reviewer (ex.: um specialist confirmou que o código está correto), isso pesa na classificação como improcedente. Se convergir, pesa como procedente. Citar a fonte no fundamento: `(corroborado por route-auditor)` ou `(refutado por repository-layer-auditor)`.
+- Classifique: **procede** (aplicar correção) ou **improcedente/marginal** (recusar com fundamento).
+- Sempre **citar `arquivo:linha`** na justificativa.
+
+#### 3a. Cross-reference com threads já tratadas (camada de decisão)
+
+Antes de redigir a réplica, comparar o ponto de cada thread aberta contra (a) o corpus de threads resolvidas do passo 2 e (b) as threads já processadas mais cedo NESTE run. Classificar a sobreposição:
+
+- **`none`** — ponto novo. Seguir normal.
+- **`duplicate`** — mesmo ponto já tratado e decidido numa thread irmã, sem nada de novo. Aplica a MESMA decisão. A réplica DEVE citar e **linkar** a thread irmã (markdown `[link](url)`) e dizer explicitamente que é o mesmo ponto já endereçado. Não reabrir a análise nem reaplicar correção que já foi feita.
+- **`related-but-distinct`** — toca o mesmo código/tema de uma thread irmã, mas traz um ângulo genuinamente diferente (ex.: mesma subquery, mas o irmão era sobre *correção* e este é sobre *performance/índice*). A réplica DEVE linkar a irmã para contexto E deixar claro **o que há de diferente**, e dar a este ponto sua **própria decisão** (não herdar a da irmã).
+
+**Regra de ouro (a "camada de decisão" que o usuário pediu):** nunca tratar como duplicado de forma silenciosa. Sempre articular, na réplica, se é duplicado puro ou se, apesar de já citado em outro ponto, há algo distinto que merece decisão própria. Na dúvida entre `duplicate` e `related-but-distinct`, escolher `related-but-distinct` e explicar a diferença, errar para o lado de pensar a mais.
+
+Como linkar a irmã: usar o `url` (permalink do comentário) coletado no passo 2. Ex.: `já endereçado em [PERF / MIN(id)](https://github.com/{owner}/{repo}/pull/{n}#discussion_r{databaseId})`.
+
+#### 3b. Reação alinhada ao teor da resposta (vale para bot E humanos)
+
+- 👍 (`content=+1`) quando a sugestão é acolhida/procedente (e será aplicada), OU quando é um `related-but-distinct` válido.
+- 👎 (`content=-1`) quando improcedente, marginal, ou `duplicate` de algo já recusado.
+- Para `duplicate` de algo já **aceito e aplicado**: 👍 (o ponto é válido), com réplica curta apontando a irmã.
+
+Monte o **plano** (o "dry-run" da confirmação): por thread, registre `{databaseId, path:line, autor, veredito, sobreposição (none|duplicate|related-but-distinct + link da irmã), reação 👍/👎, rascunho da réplica}`, e ao final `{lista de arquivos alterados, resumo do diff, mensagem de commit proposta}`.
+
+### 4. Aplicar as correções pertinentes  · fase 2
+
+Para as threads que **procedem**, aplique as correções no working tree. Mantenha os arquivos alterados. Para as que NÃO procedem, não há mudança de código — só réplica + reação no passo 7.
+
+### 5. Quality gate (antes de oferecer o push)
+
+Nos arquivos tocados:
+
+```bash
+pnpm typecheck
+pnpm lint        # ou: npx biome check <arquivos>
+# testes unitários afetados:
+CI=true AUTH_TOKEN=test-token npx vitest run <arquivos de teste afetados>
+```
+
+Integração roda em Docker. Se o daemon estiver down (`docker info` falha), **não bloqueie** — registre no plano "integração não validada localmente (Docker down)" e avise o usuário. Seguir o Agent Workflow do `CLAUDE.md` do repo (self-reviewer) quando aplicável.
+
+> O Biome ignora os paths de teste de integração: rodar `biome check` num arquivo sob `tests/integration/` reporta "Checked 0 files" — isso é esperado, não é erro; registrar como n/a no plano.
+
+### 6. Confirmação interativa (pular se `--auto`)
+
+Mostre no chat o plano resumido (vereditos + reações + arquivos alterados + mensagem de commit), e pergunte via `AskUserQuestion` (single-select):
+
+- **Header:** `Atualizar PR?`
+- **Question:** `Apliquei as correções e preparei as respostas das {N} threads da PR #{number}. O que fazer agora?`
+- **Options (nesta ordem):**
+  1. `Postar tudo e atualizar a PR (Recomendado)` — descrição: `Posta as réplicas + reações 👍/👎, resolve as threads, e então commita + pusha as correções.`
+  2. `Postar respostas e resolver, sem push` — descrição: `Interage no GitHub (réplicas, reações, resolve threads) mas deixa o commit/push pra você revisar o diff antes.`
+  3. `Só deixar as correções locais` — descrição: `Não toca no GitHub. Threads ficam abertas, nada é commitado. Você revisa tudo localmente.`
+  4. `Cancelar` — descrição: `Não posta nada. Os arquivos alterados ficam no working tree pra você inspecionar ou reverter.`
+
+> A opção recomendada é a primeira, com `(Recomendado)` no label. Com `--auto`, assuma a opção 1 sem perguntar.
+
+### 7. Postar réplicas + reações + resolver (opções 1 e 2)  · fase 3
+
+Para cada thread endereçada, na ordem: **reply → reação → resolve**.
+
+```bash
+# Réplica (review comment line-anchored):
+gh api repos/$REPO_FULL/pulls/$PR_NUMBER/comments/<databaseId>/replies -f body='...'
+
+# Reação no comentário:
+gh api repos/$REPO_FULL/pulls/comments/<databaseId>/reactions -f content='+1'   # ou -1
+
+# Resolver a thread (usa o NODE id PRRT_..., NÃO o databaseId):
+gh api graphql -f query='mutation($id:ID!){ resolveReviewThread(input:{threadId:$id}){ thread { isResolved } } }' -f id="<PRRT_...>"
+```
+
+**GOTCHA zsh:** variáveis não sofrem word-splitting. Ao iterar IDs, processe **um por vez** (loop com a lista literal ou linha a linha) — nunca passe a string inteira de IDs de uma vez para a mutation, senão o GraphQL recebe os IDs concatenados e dá `NOT_FOUND`.
+
+Top-level issue comments: responder = novo `gh api repos/$REPO_FULL/issues/$PR_NUMBER/comments -f body=...` referenciando o autor; reação via `issues/comments/<id>/reactions`. Não há resolve.
+
+**Guardrail para threads HUMANAS:** resolva automaticamente quando o assunto está encerrado (acolhido + aplicado, ou recusado com justificativa clara e baixa controvérsia). Se a thread precisa de decisão do revisor (`needs-discussion`), **poste a réplica + reação mas NÃO resolva** — deixe aberta e sinalize ao usuário no resumo final.
+
+### 8. Commit + push (somente opção 1, e só após o passo 7 completo)  · fase 4
+
+Confirme que TODAS as threads endereçadas foram respondidas e resolvidas antes de pushar.
+
+```bash
+git add <arquivos alterados>
+git commit -m "$(cat <<'EOF'
+<emoji> <tipo>(<escopo>): <descrição do que e por que>
+
+<corpo: o que mudou e o porquê das correções dos comentários>
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+EOF
+)"
+git push origin <headRefName>
+```
+
+- Conventional Commits + emoji prefix. Se forem correções heterogêneas, agrupe num commit coerente (ou separe em commits por tema, a critério).
+- **OBRIGATÓRIO** o trailer `Co-Authored-By: Claude <noreply@anthropic.com>` via HEREDOC, sem exceção.
+- Push só na branch da PR (`headRefName`), nunca em `main`.
+
+### 9. Resposta no chat
+
+Tabela curta: por thread `{path:line | veredito | sobreposição | 👍/👎}`, depois `{commit hash, range de push}`. Sinalize threads humanas deixadas abertas (`needs-discussion`) e quais foram marcadas como `duplicate`/`related-but-distinct` (com link da irmã). Não repita os bodies completos das réplicas.
+
+## Convenções de texto (GitHub = publicação externa)
+
+- PT-BR com acentuação correta sempre.
+- **PROIBIDO travessão (—) e en-dash (–)** em qualquer texto postado no GitHub (réplicas, corpo de commit que vai pra PR). Usar vírgula, dois-pontos, parênteses, ponto-e-vírgula. (Regra global do usuário; vale para texto externo, não para este arquivo de doc interno.)
+- Em `gh api -f body='...'`, usar **aspas simples** para o shell não interpretar crases/backticks. Conferir que o texto não contém apóstrofo (que quebraria a aspa simples); se contiver, reescrever sem apóstrofo ou usar HEREDOC via `--input`. Como backtick é literal dentro de aspas simples, dá pra usar markdown à vontade no body sem escape.
+
+### Formatação markdown das réplicas (OBRIGATÓRIO)
+
+O GitHub renderiza markdown nas réplicas. NÃO postar identificadores e código em plain text. Aplicar sempre:
+
+- **Inline code (backticks)** em: identificadores (variáveis, funções, colunas, tabelas, enums, flags), expressões e trechos curtos de SQL/código, nomes de arquivo, valores literais e query params de exemplo. Ex.: `` `MIN(id)` ``, `` `cea2.event_id` ``, `` `eventId` ``, `` `?eventId=42` ``, `` `get-messages-with-event.school.integration.test.ts` ``.
+- **Referências `arquivo:linha`** sempre em backticks, e quando ajudar o leitor, linkadas ao permalink do blob no SHA do head da PR:
+  - Linha única: `` [`path:1467`](https://github.com/{owner}/{repo}/blob/{headSha}/{path}#L1467) ``
+  - Range: `...#L1463-L1466`
+  - Pegar o SHA: `gh pr view {n} --repo {owner}/{repo} --json headRefOid -q .headRefOid` (usar o SHA, não a branch, para o link não quebrar em pushes futuros).
+- **Trechos de mais de uma linha** em bloco cercado com a linguagem: ```` ```sql ... ``` ````.
+- Mesmo critério vale para as reações: o markdown é só do corpo textual; a reação 👍/👎 continua via `content=+1`/`-1`.
+
+> Antifrase do dogfooding (PR #962): a réplica saiu correta no conteúdo mas em plain text (`linha 1467`, `MIN(id)`, `cea2.event_id`, nome do arquivo cru). O esperado é `` `MIN(id)` ``, `` [`messages.get-by-user.repository.ts:1467`](permalink) ``, etc.
+
+---
+
+## Modo WATCH (default; desligue com `--once`)
+
+> O watch é o comportamento **padrão**: o comando faz a 1ª passada normalmente e, após o push, **fica vivo** monitorando a PR (CI + novas rodadas do bot) até ela assentar ou mergear, para não deixar a rodada morrer nem esquecer que precisa ser fechada. Use `--once` (alias `--no-watch`) para rodar só uma passada e terminar após o push.
+
+### Quando o usuário pediu
+Cenário típico: o usuário fechou a 1ª rodada de threads e **vai sair**. Quer que o comando:
+1. Pegue automaticamente as **próximas rodadas** do bot `arco-pr-reviewer` (que costuma recomentar depois do push) e as feche sem intervenção.
+2. **Monitore o CI** da PR (GitHub Actions) e avise/aja quando quebrar.
+3. Não esqueça: mantenha a sessão acordada com cadência sã até a PR assentar.
+
+As **rodadas subsequentes do watch rodam em `--auto`**: cada uma aplica + posta + resolve + commita + pusha sozinha (assume a opção 1 da confirmação), já que o usuário tipicamente saiu. A 1ª passada mantém a confirmação interativa, a menos que `--auto`. Verificação contra o código real continua **obrigatória** em toda rodada, watch não relaxa o rigor anti-falso-positivo.
+
+### Estado persistente (não esquecer entre wakes)
+Mantenha um arquivo de estado por PR para sobreviver aos `ScheduleWakeup` e às janelas de contexto. Caminho: `.git/arco-watch-pr-<PR_NUMBER>.json` no checkout (fica fora do versionamento, dentro de `.git/`). Campos:
+
+```json
+{
+  "pr": 962,
+  "repo": "OlaIsaac/communication-api",
+  "headRefName": "feat/...",
+  "round": 1,
+  "resolvedThreadIds": ["PRRT_..."],
+  "lastHeadSha": "abc123",
+  "lastCiConclusion": "success|failure|pending|null",
+  "quietTicks": 0,
+  "startedAt": "<ISO>",
+  "lastTickAt": "<ISO>"
+}
+```
+
+Na 1ª passada, grave o estado inicial (round 1, threads que você resolveu, SHA pós-push). Em cada tick, leia, atualize e regrave. Se o arquivo sumir (ex.: sessão reiniciada), reconstrua o `resolvedThreadIds` a partir das threads atualmente `isResolved == true` de sua autoria.
+
+### O loop de watch (cada tick)
+Após a 1ª passada (e a cada wake), execute UM tick:
+
+1. **Estado da PR.** `gh pr view $PR_NUMBER --repo $REPO_FULL --json state,merged,headRefOid,isDraft`.
+   - `merged == true` ou `state == "CLOSED"` → **encerrar o watch** com relatório final. Não pushar mais nada.
+2. **CI.** `gh pr checks $PR_NUMBER --repo $REPO_FULL --json name,state,conclusion,link` (ou `gh pr checks` simples se o JSON não vier). Classifique o agregado:
+   - `pending`/`in_progress` → CI rodando, ainda não decidiu.
+   - todos `success`/`neutral`/`skipped` → **verde**.
+   - qualquer `failure`/`timed_out`/`cancelled` → **vermelho**.
+3. **Threads novas.** Rode o GraphQL `reviewThreads` do passo 2. Compute o delta: threads `isResolved == false` cujo `id` (PRRT) **não** está em `resolvedThreadIds` do estado, e que não sejam triviais (mesma regra de "pular triviais"). Esse delta é a **nova rodada**.
+
+#### Decisão do tick (em ordem de prioridade)
+- **Nova rodada de threads (delta não vazio)** → execute o fluxo normal (passos 3 a 8) **só sobre as threads do delta**, com `--auto`. Ao terminar: `round += 1`, adicione os PRRT recém-resolvidos a `resolvedThreadIds`, atualize `lastHeadSha`, zere `quietTicks`. Emita evento Slack `nova-rodada-fechada` (ver "Hook Slack").
+- **CI vermelho** (e sem delta de threads) → colete o porquê: `gh pr checks` para achar o check que falhou e `gh run view <run-id> --repo $REPO_FULL --log-failed` (pegue o `run-id` pelo `link`/`databaseId` do check). 
+  - Se a causa for **claramente** atribuível ao seu último push e dentro do escopo das correções (ex.: typecheck/lint/teste que você mexeu quebrou), tente **uma** correção, rode o quality gate local, e se passar, commite + pushe (mesma branch). Emita evento `ci-corrigido-tentativa`.
+  - Caso contrário (falha de infra, flaky, teste não relacionado, mudança de base) → **não** mexa no código. Registre, emita evento `ci-vermelho` com link do log, e siga monitorando. Não fique tentando corrigir em loop: no máximo **uma** tentativa de auto-fix por SHA.
+- **CI verde + sem delta de threads** → `quietTicks += 1`. Emita `ci-verde` apenas na **transição** (quando `lastCiConclusion != success`).
+- **CI pending + sem delta** → não faz nada além de aguardar (não conta como quiet tick).
+
+Atualize sempre `lastCiConclusion` e `lastTickAt` no estado.
+
+#### Condições de saída (encerrar o watch)
+- PR mergeada ou fechada.
+- **Assentou**: CI verde **e** zero threads abertas por **2 ticks consecutivos** (`quietTicks >= 2`). A PR está pronta para review humano/merge; o watch cumpriu o papel.
+- Limite de segurança: `round > 8` ou watch ativo há mais de ~6h sem assentar → encerre avisando que passou do esperado (provável discussão humana travada ou CI cronicamente vermelho) e peça olhada manual.
+- Usuário interrompe a sessão.
+
+Em qualquer saída, **relatório final** no chat: rodadas fechadas, estado final do CI (com link se vermelho), threads humanas deixadas em `needs-discussion`, e o range de commits pushados durante o watch.
+
+### Cadência (escolha do `delaySeconds` do próximo wake)
+Use `ScheduleWakeup` ao fim de cada tick para reabrir a sessão. A escolha do intervalo segue as janelas de cache (TTL ~5 min):
+- **CI rodando** ou **acabei de fechar uma rodada** (espero recomentário rápido do bot): **270s** (mantém o cache quente; é o que muda rápido).
+- **CI verde, aguardando assentar** (quiet ticks): **1200s** (~20 min). Não há o que checar antes disso; paga o cache miss uma vez e espera mais.
+- **CI vermelho aguardando resolução externa**: **1200s**. Já reportei; só re-checo se mudou.
+- Nunca 300s (pior dos dois mundos). O `reason` do wake deve ser específico: "watch PR #962: CI rodando pós-push, re-checo em 270s".
+
+Passe o **mesmo input** (`/review-arco-iterate <pr>`, que já reentra no watch por ser o default) de volta no `prompt` do `ScheduleWakeup`, para o próximo firing reentrar no watch. Omita o `ScheduleWakeup` apenas nas condições de saída.
+
+### Hook Slack (feed de status, opcional)
+Se o feed de PRs no Slack estiver configurado (ver plano em `~/.notes/1-contexts/arco/plans/*-slack-pr-status-feed.md`), emita uma atualização a cada **transição** relevante: `nova-rodada-fechada`, `ci-vermelho`, `ci-corrigido-tentativa`, `ci-verde`, `assentou`, `mergeada`. Use o updater do feed (canvas vivo + ping no thread). Se o feed não estiver configurado, **pule silenciosamente** o hook, o watch funciona sem ele.
+
+---
+
+## Notas finais
+
+- Verificação vem antes de tudo: nunca aceitar um comentário do bot sem confirmar a alegação no código real. Vale igual dentro do modo WATCH.
+- **Watch é o default**: após a 1ª passada e o push, fica vivo monitorando CI + novas rodadas do bot até a PR assentar/mergear (ver "Modo WATCH"). Use **`--once`** (alias `--no-watch`) para o comportamento legado de uma passada só (não fica em loop; se o bot recomentar, o usuário reinvoca).
+- Se `gh` não estiver autenticado, pedir `gh auth login` e abortar.
+- Se o quality gate falhar (typecheck/lint/teste), **não** avançar para postar/pushar: reportar a falha e parar para o usuário decidir.

@@ -1,0 +1,4 @@
+{
+  "_doc": "Arco-machine overlay. Merged on top of claude/settings.base.json by scripts/merge-settings.sh. Workspace-specific plugins (figma, linear, slack, code-review, code-simplifier, atomic-agents, plugin-dev, arco-ai-plugins/core, arco-default) and 'auto' permission mode moved to contexts/arco/.claude/settings.json — they activate only when cwd is under /Users/grippado/www/isaac/. Overlay here keeps only machine-level concerns: model preference.",
+  "model": "opus"
+}

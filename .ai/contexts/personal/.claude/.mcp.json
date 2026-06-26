@@ -1,0 +1,9 @@
+{
+  "_doc": "MCP servers scoped to Personal workspace. Activated only when Claude Code session is opened at /Users/grippado/www/personal/. Other MCP integrations (claude.ai ClickUp, Vercel, Calendar, Drive) remain user-level via .claude.json and require manual cleanup if you want them scoped too.",
+  "mcpServers": {
+    "figma-remote-mcp": {
+      "type": "http",
+      "url": "https://mcp.figma.com/mcp"
+    }
+  }
+}

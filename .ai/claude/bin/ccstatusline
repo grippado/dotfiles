@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Wrapper que encontra ccstatusline em qualquer versão de node instalada via fnm.
+# Necessário porque diferentes pastas/.nvmrc trocam a versão ativa do node, e
+# o pacote npm `ccstatusline` só está instalado em algumas versões.
+#
+# Estratégia:
+#   1. Tenta a versão default do fnm primeiro (mais provável de ter o pacote)
+#   2. Cai pra qualquer outra versão fnm que tenha o binário
+#   3. Por último cai no PATH normal (caso tenha sido instalado fora do fnm)
+
+set -e
+
+# 1. Tentar default do fnm (resolve o symlink para a versão real)
+FNM_DEFAULT_LINK="$HOME/.local/share/fnm/aliases/default"
+if [ -L "$FNM_DEFAULT_LINK" ]; then
+  DEFAULT_VER=$(basename "$(readlink "$FNM_DEFAULT_LINK")")
+  CCS="$HOME/.local/share/fnm/node-versions/$DEFAULT_VER/installation/bin/ccstatusline"
+  [ -x "$CCS" ] && exec "$CCS" "$@"
+fi
+
+# 2. Qualquer versão fnm que tenha o binário (mais novo primeiro)
+for ccs in $(ls -t "$HOME/.local/share/fnm/node-versions"/*/installation/bin/ccstatusline 2>/dev/null); do
+  [ -x "$ccs" ] && exec "$ccs" "$@"
+done
+
+# 3. Fallback: PATH normal
+if command -v ccstatusline >/dev/null 2>&1; then
+  exec ccstatusline "$@"
+fi
+
+# Se nada funcionou, falha silenciosa (statusline some, mas não trava o Claude)
+exit 0
