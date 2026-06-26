@@ -1,0 +1,22 @@
+# sesh — gerenciador de sessões tmux (versionado em cangaço)
+# Symlink: ~/.config/sesh/sesh.toml -> este arquivo
+# Uso: `sesh connect $(sesh list | fzf)` ou via tmux-sessionx (prefix + o)
+
+[default_session]
+startup_command = "ls -la"
+
+# Sessões nomeadas frequentes. Ajuste os paths conforme suas máquinas.
+[[session]]
+name = "cangaço 🐗"
+path = "~/cangaco"
+startup_command = "git status -s"
+
+[[session]]
+name = "notes 🧠"
+path = "~/.notes"
+
+# Sessão-modelo para um harness de IA isolado num worktree.
+# (o helper `agent-new` no shell cria isso dinamicamente; este é só um exemplo)
+[[session]]
+name = "scratch"
+path = "~/www/personal"

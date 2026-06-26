@@ -89,6 +89,12 @@ fi
 # Config do Claude Code e gerenciada por ~/.dotfiles-ai/install.sh (fonte da
 # verdade). Este repo nao escreve em ~/.claude.
 
+# ── Terminal (Ghostty + tmux + sesh) ─────────────────────────
+# Instala ferramentas, clona TPM e religa os symlinks de config.
+if [ -x "$DFL/installers/terminal.sh" ]; then
+    bash "$DFL/installers/terminal.sh"
+fi
+
 # ── Zed editor CLI (macOS) ───────────────────────────────────
 # Expoe `zed` / `zed .` no PATH, espelhando code/cursor.
 ZED_CLI="/Applications/Zed.app/Contents/MacOS/cli"

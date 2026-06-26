@@ -63,6 +63,9 @@ export NOTES_VAULT="$HOME/.notes"
 # direnv
 command -v direnv &>/dev/null && eval "$(direnv hook zsh)"
 
+# zoxide (navegação inteligente; usado pelo sesh) — adiciona `z` e `zi`
+command -v zoxide &>/dev/null && eval "$(zoxide init zsh)"
+
 # FNM (Fast Node Manager)
 if command -v fnm &>/dev/null; then
     eval "$(fnm env --use-on-cd --shell zsh)"

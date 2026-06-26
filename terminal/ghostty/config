@@ -1,0 +1,35 @@
+# Ghostty config — versionado em cangaço (terminal/ghostty/config)
+# Symlink: ~/.config/ghostty/config -> este arquivo (via installers/terminal.sh)
+# Live reload automático ao salvar. Docs: ghostty +show-config --default --docs
+
+# ── Aparência ────────────────────────────────────────────────
+font-family = CaskaydiaMono Nerd Font
+font-size = 14
+theme = light:Catppuccin Latte,dark:Catppuccin Mocha
+background-opacity = 0.96
+background-blur-radius = 20
+window-padding-x = 10
+window-padding-y = 8
+window-padding-balance = true
+mouse-hide-while-typing = true
+cursor-style = block
+macos-titlebar-style = tabs
+
+# ── Shell integration (zero-config, não precisa editar .zshrc) ─
+# ssh-terminfo/ssh-env evitam "terminal type not recognized" em SSH.
+shell-integration = zsh
+shell-integration-features = cursor,sudo,title,ssh-env,ssh-terminfo
+
+# ── Quick terminal (dropdown estilo Quake) ───────────────────
+# global: exige permissão de Accessibility no macOS.
+quick-terminal-position = top
+quick-terminal-animation-duration = 0.12
+keybind = global:cmd+grave_accent=toggle_quick_terminal
+
+# ── Keybinds extras ──────────────────────────────────────────
+keybind = cmd+shift+r=reload_config
+keybind = performable:cmd+k=clear_screen
+keybind = cmd+enter=toggle_fullscreen
+
+# Splits nativos (defaults macOS já dão cmd+d / cmd+shift+d / cmd+alt+setas).
+# Use os splits do Ghostty para layout efêmero; persistência é trabalho do tmux.

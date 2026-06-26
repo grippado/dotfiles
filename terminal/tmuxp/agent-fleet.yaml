@@ -1,0 +1,26 @@
+# tmuxp — layout declarativo para uma "frota" de harnesses de IA
+# Uso: tmuxp load ~/cangaco/terminal/tmuxp/agent-fleet.yaml
+# Edite REPO/branches conforme a tarefa. Cada window = 1 agente isolado.
+#
+# before_script roda 1x antes de subir as windows (bootstrap de deps, etc).
+
+session_name: fleet
+start_directory: ~/www/personal
+
+windows:
+  - window_name: dash
+    panes:
+      # Painel de controle (agent-dashboard); fallback: watch dos worktrees
+      - command -v agent-dashboard >/dev/null && agent-dashboard || git worktree list
+
+  - window_name: agent-1
+    panes:
+      - claude --worktree
+
+  - window_name: agent-2
+    panes:
+      - claude --worktree
+
+  - window_name: agent-3
+    panes:
+      - claude --worktree

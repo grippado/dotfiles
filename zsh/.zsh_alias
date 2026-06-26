@@ -123,6 +123,11 @@ alias tls="tmux ls"
 alias tn="tmux new -s"
 alias tk="tmux kill-session -t"
 
+# Sesh (gerenciador de sessões tmux) + tmuxp
+alias ss="sesh connect \$(sesh list --icons | fzf)"   # fuzzy-pick de sessão
+alias sl="sesh list --icons"
+alias fleet="tmuxp load -y \${CANGACO:-\$DFL}/terminal/tmuxp/agent-fleet.yaml"  # sobe a frota de agentes
+
 # Misc aliases
 alias c="clear"
 alias h="history"

@@ -880,5 +880,30 @@ function deck2pdf {
     npx --yes decktape reveal "$url" "$out" --size "$size" --load-pause 800
 }
 
+# agent-new <nome> [cmd] — sobe um harness de IA isolado numa janela tmux própria.
+# Cria/anexa a sessão "fleet", abre uma window com o nome dado e roda o harness
+# com isolamento de git worktree nativo (claude --worktree). Fora do tmux, abre
+# uma sessão nova; dentro do tmux, só cria a window.
+# ex: agent-new fix-login
+# ex: agent-new refactor "claude --worktree --dangerously-skip-permissions"
+function agent-new {
+    if [ -z "$1" ]; then
+        echo "usage: agent-new <nome> [comando]" >&2
+        return 1
+    fi
+    local name="$1"
+    local cmd="${2:-claude --worktree}"
+    local session="fleet"
+
+    if [ -z "$TMUX" ]; then
+        tmux has-session -t "$session" 2>/dev/null \
+            && tmux new-window -t "$session" -n "$name" "$cmd; zsh" \
+            || tmux new-session -s "$session" -n "$name" "$cmd; zsh"
+        tmux attach -t "$session"
+    else
+        tmux new-window -n "$name" "$cmd; zsh"
+    fi
+}
+
 # Load local/org-specific functions if available
 [ -f "$HOME/.zsh_functions_local" ] && source "$HOME/.zsh_functions_local"
