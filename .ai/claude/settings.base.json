@@ -51,7 +51,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.dotfiles-ai/claude/hooks/claude-session-end.sh"
+            "command": "$HOME/cangaco/.ai/claude/hooks/claude-session-end.sh"
           }
         ]
       }

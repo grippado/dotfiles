@@ -21,7 +21,7 @@ This ecosystem solves three problems:
    They read the real code before judging — they do not hallucinate patterns.
 2. **Baseline comparison.** Running specialists alongside the generic reviewer (benchmark mode)
    makes the value of each approach measurable and falsifiable.
-3. **Incremental ownership transfer.** Agents start as personal tooling in `~/.dotfiles-ai` and
+3. **Incremental ownership transfer.** Agents start as personal tooling in `~/cangaco/.ai` and
    can be migrated into the repo itself when the team is ready (see section 8).
 
 ---
@@ -29,7 +29,7 @@ This ecosystem solves three problems:
 ## 2. Directory structure
 
 ```
-~/.dotfiles-ai/claude/agents/isaac/
+~/cangaco/.ai/claude/agents/isaac/
 ├── AGENT_SPEC.md              ← this file (canonical spec)
 ├── communication-api/
 │   ├── AGENT.md               ← agent index + dependency graph for this repo
@@ -218,7 +218,7 @@ Both commands accept `--agents-on` (alias `-aon`) in any argument position.
 
 ```bash
 REPO_SLUG=$(gh repo view --json name -q .name)
-REPO_OWNER_PATH="$HOME/.dotfiles-ai/claude/agents/isaac/$REPO_SLUG/repo-owner.md"
+REPO_OWNER_PATH="$HOME/cangaco/.ai/claude/agents/isaac/$REPO_SLUG/repo-owner.md"
 ```
 
 If `$REPO_OWNER_PATH` does not exist: warn ("nenhum agent especializado encontrado para
@@ -257,7 +257,7 @@ whole review pipeline.
 
 - [ ] **Confirm repo-slug.** Run `gh repo view --json name -q .name` from inside the checkout.
       The directory name must match exactly.
-- [ ] **Create the directory:** `mkdir -p ~/.dotfiles-ai/claude/agents/isaac/<repo-slug>/`
+- [ ] **Create the directory:** `mkdir -p ~/cangaco/.ai/claude/agents/isaac/<repo-slug>/`
 - [ ] **Write `AGENT.md`** — agent index, command table, and dependency graph. Reference this
       file: `For the canonical specification this system follows, see ../AGENT_SPEC.md`.
 - [ ] **Write `repo-owner.md`** — follow the communication-api implementation as reference.
@@ -285,7 +285,7 @@ whole review pipeline.
 
 ## 8. Team ownership (phase 2)
 
-Phase 1 (current): agents live in `~/.dotfiles-ai/claude/agents/isaac/<repo-slug>/`. They are
+Phase 1 (current): agents live in `~/cangaco/.ai/claude/agents/isaac/<repo-slug>/`. They are
 personal tooling — maintained by Gabriel, not visible to the team, not versioned in the repo.
 
 Phase 2 (future): agents move into the repo itself at `.claude/agents/`. The team maintains them,
@@ -306,7 +306,7 @@ Consider migrating when **any two** of the following are true:
    Include the `AGENT.md` index as `.claude/AGENT.md` (or merge into existing if present).
 2. Update `repo-owner.md` to read local context files relative to `pwd` rather than absolute
    paths (the repo checkout replaces the need for the absolute `.dotfiles-ai` path).
-3. After the PR merges, delete the corresponding directory from `~/.dotfiles-ai/claude/agents/isaac/`.
+3. After the PR merges, delete the corresponding directory from `~/cangaco/.ai/claude/agents/isaac/`.
 4. Update the review-arco detection logic: the `REPO_OWNER_PATH` check should fall back to
    `.claude/agents/repo-owner.md` in the local checkout if the dotfiles-ai path does not exist.
 

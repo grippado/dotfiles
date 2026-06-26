@@ -74,7 +74,7 @@ documentado com precisão (enums, status, camadas).
 
 ```bash
 # Suite per-repo nas dotfiles (personal tooling — phase 1 do AGENT_SPEC)
-ls "$HOME/.dotfiles-ai/claude/agents/isaac/$REPO_SLUG/" 2>/dev/null
+ls "$HOME/cangaco/.ai/claude/agents/isaac/$REPO_SLUG/" 2>/dev/null
 # Suite migrada para o repo (phase 2)
 ls "$REPO_PATH/.claude/agents/" 2>/dev/null
 ```

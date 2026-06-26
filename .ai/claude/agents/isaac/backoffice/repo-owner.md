@@ -16,7 +16,7 @@ Read these files before delegating to any specialist:
 5. `.claude/rules/react-patterns.md` — useEffect restrictions, dialog patterns, Gravity component lookup
 6. `.claude/rules/testing.md` — Vitest + RTL standards
 7. `.claude/rules/gravity-components.md` — @gravity/* Tailwind registration pitfall
-8. `AGENT.md` (this repo's agent index, at `~/.dotfiles-ai/claude/agents/isaac/backoffice/AGENT.md`)
+8. `AGENT.md` (this repo's agent index, at `~/cangaco/.ai/claude/agents/isaac/backoffice/AGENT.md`)
 
 **Skip-Step-0 is a hard violation.** Do not delegate before loading context.
 

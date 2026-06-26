@@ -138,7 +138,7 @@ Detectar o repo-slug e o caminho do repo-owner:
 
 ```bash
 REPO_SLUG=$(gh repo view --json name -q .name)
-REPO_OWNER_PATH="$HOME/.dotfiles-ai/claude/agents/isaac/$REPO_SLUG/repo-owner.md"
+REPO_OWNER_PATH="$HOME/cangaco/.ai/claude/agents/isaac/$REPO_SLUG/repo-owner.md"
 ```
 
 Se `$REPO_OWNER_PATH` não existir:

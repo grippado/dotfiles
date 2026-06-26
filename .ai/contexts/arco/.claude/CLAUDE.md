@@ -1,7 +1,7 @@
 # Arco / OlaIsaac / ClassApp Workspace
 
 > Carregado automaticamente quando `cwd` está sob `/Users/grippado/www/isaac/*`.
-> Source-of-truth: `~/.dotfiles-ai/contexts/arco/.claude/CLAUDE.md`.
+> Source-of-truth: `~/cangaco/.ai/contexts/arco/.claude/CLAUDE.md`.
 
 ## Repos neste workspace
 
@@ -71,6 +71,6 @@ Plugin `arco-default@olaisaac-arco-agents` (que provê `arco-default:*` — work
 
 ## O que está fora deste contexto
 
-- **FlagBridge, labor.city, declare-ui, gripp-link, etc.** → `~/.dotfiles-ai/contexts/personal/.claude/`
+- **FlagBridge, labor.city, declare-ui, gripp-link, etc.** → `~/cangaco/.ai/contexts/personal/.claude/`
 - **Comandos transversais** (`dep-check`, `explain`, `quick-commit`, `review-changes`, `roast`, `scaffold`, `pr-report`, `organize`, `ship`) → global `~/.claude/`
 - **Agents genéricos** (`code-reviewer`, `doc-writer`, `git-assistant`, `memory-extractor`, `context-keeper`, `bug-hunter`, etc.) → global `~/.claude/`

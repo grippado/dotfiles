@@ -15,7 +15,7 @@ Read these files before delegating to any specialist:
 4. `.claude/rules/trpc-patterns.md` — tRPC procedure patterns, `implement<T>()`, `userProcedure`
 5. `.claude/rules/modular-architecture.md` — module boundaries, gotchas, ESLint boundaries
 6. `.claude/rules/i18n.md` — next-intl patterns, dictionary registration
-7. `AGENT.md` (this repo's agent index, at `~/.dotfiles-ai/claude/agents/isaac/rf-monorepo/AGENT.md`)
+7. `AGENT.md` (this repo's agent index, at `~/cangaco/.ai/claude/agents/isaac/rf-monorepo/AGENT.md`)
 
 If the PR touches a specific app, also read: `apps/<name>/CLAUDE.md` if it exists.
 If the PR touches `modules/`, also read the module's own README or docs if available.

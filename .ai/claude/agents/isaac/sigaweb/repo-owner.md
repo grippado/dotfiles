@@ -17,7 +17,7 @@ Read these files before delegating to any specialist:
 3. `tsconfig.json` — path aliases (`@assets`, `@frontend`, `@core`, `@api`, `@ui`, `@src`,
    `@design_system`, `@siga_form`). `strict: true`, `noImplicitAny: true`, `noUnusedLocals: true`,
    `noUnusedParameters: true`.
-4. `AGENT.md` (this repo's agent index, at `~/.dotfiles-ai/claude/agents/isaac/sigaweb/AGENT.md`)
+4. `AGENT.md` (this repo's agent index, at `~/cangaco/.ai/claude/agents/isaac/sigaweb/AGENT.md`)
 
 **Skip-Step-0 is a hard violation.** Do not delegate before loading context.
 

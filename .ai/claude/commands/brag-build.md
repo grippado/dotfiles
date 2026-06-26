@@ -5,7 +5,7 @@ argument-hint: "[--month YYYY-MM | --bootstrap --since YYYY-MM-DD] [--consolidat
 
 Coleta evidências de impacto no vault `.notes` (notas, decisões, plans, PRs, RFCs) e invoca o agent **`brag-writer`** pra atualizar os brag documents em `~/.notes/7-brag-doc/`.
 
-> Este comando é **orquestração** (coleta + agrupamento por dia/mês + invocação). A escrita do brag, formato STAR, alinhamento com rubrica L12 e regras de tom moram no agent `brag-writer` (`~/.dotfiles-ai/claude/agents/brag-writer.md`). Pra evoluir o estilo do brag, editar lá.
+> Este comando é **orquestração** (coleta + agrupamento por dia/mês + invocação). A escrita do brag, formato STAR, alinhamento com rubrica L12 e regras de tom moram no agent `brag-writer` (`~/cangaco/.ai/claude/agents/brag-writer.md`). Pra evoluir o estilo do brag, editar lá.
 
 ## Modelo mental
 

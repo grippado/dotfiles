@@ -7,7 +7,7 @@ Workspace overlay para `/Users/grippado/www/isaac/` (Arco / OlaIsaac / ClassApp 
 Camada intermediária entre o Claude Code global (`~/.claude/`) e os repos individuais. Carregada automaticamente pelo Claude Code quando `cwd` está sob `/Users/grippado/www/isaac/*`, via symlink:
 
 ```
-/Users/grippado/www/isaac/.claude  →  ~/.dotfiles-ai/contexts/arco/.claude
+/Users/grippado/www/isaac/.claude  →  ~/cangaco/.ai/contexts/arco/.claude
 ```
 
 O symlink é criado pelo `install.sh`.

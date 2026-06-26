@@ -85,7 +85,7 @@ _is_log_noise() {
 # --- inferencia de cwd_hint --------------------------------------------------
 # O prompt_history.json e as memorias do Cursor GUI nao carregam cwd por item.
 # Best-effort: extrai um path citado no proprio texto, mas SO sob roots
-# conhecidos (~/www/{personal,isaac}/<repo>, ~/.dotfiles-ai, ~/.notes) pra nao
+# conhecidos (~/www/{personal,isaac}/<repo>, ~/cangaco/.ai, ~/.notes) pra nao
 # emitir cwd_hint lixo. Vazio se nada confiavel for encontrado.
 _infer_cwd() {
   printf '%s' "$1" \

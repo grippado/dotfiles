@@ -184,7 +184,7 @@ Detectar o repo-slug e o caminho do repo-owner:
 
 ```bash
 REPO_SLUG=$(gh repo view --json name -q .name)
-REPO_OWNER_PATH="$HOME/.dotfiles-ai/claude/agents/isaac/$REPO_SLUG/repo-owner.md"
+REPO_OWNER_PATH="$HOME/cangaco/.ai/claude/agents/isaac/$REPO_SLUG/repo-owner.md"
 ```
 
 Se `$REPO_OWNER_PATH` não existir:
@@ -679,10 +679,10 @@ Acionada em **qualquer verbo**, depois de detectar o(s) repo(s) envolvido(s) e *
 Para cada repo referenciado/alvo, checar:
 
 ```bash
-REPO_OWNER_PATH="$HOME/.dotfiles-ai/claude/agents/isaac/<repo-slug>/repo-owner.md"
+REPO_OWNER_PATH="$HOME/cangaco/.ai/claude/agents/isaac/<repo-slug>/repo-owner.md"
 ```
 
-A checagem é **só no ambiente do Gabriel** (`~/.dotfiles-ai`), independente de o repo origin já ter
+A checagem é **só no ambiente do Gabriel** (`~/cangaco/.ai`), independente de o repo origin já ter
 ou não `.claude/agents/`. Se o `repo-owner.md` existir, nada a fazer. Se **não** existir, o review já
 rodou normalmente (lendo o checkout direto) e agora oferece bootstrapar a suite via `AskUserQuestion`
 (single-select):
@@ -695,12 +695,12 @@ rodou normalmente (lendo o checkout direto) e agora oferece bootstrapar a suite 
   3. `Agora não` — não faz nada (fica registrado na nota como sugestão).
 
 **Geração (opções 1 e 2)** segue o checklist do `AGENT_SPEC §7`
-(`~/.dotfiles-ai/claude/agents/isaac/AGENT_SPEC.md`):
+(`~/cangaco/.ai/claude/agents/isaac/AGENT_SPEC.md`):
 
 1. Confirmar repo-slug: `cd ~/www/isaac/<slug> && gh repo view --json name -q .name`.
 2. Ler `CLAUDE.md` do repo + detectar a stack (package.json / go.mod / etc.).
 3. Delegar a autoria a um `general-purpose` passando o `AGENT_SPEC.md` como espec, instruindo a
-   escrever em `~/.dotfiles-ai/claude/agents/isaac/<slug>/`: `AGENT.md` (índice + grafo de deps),
+   escrever em `~/cangaco/.ai/claude/agents/isaac/<slug>/`: `AGENT.md` (índice + grafo de deps),
    `repo-owner.md` (orquestrador adaptado à estrutura real, **não** copiado verbatim de outro repo),
    e specialists base conforme o tipo de repo (ler código real antes de cada specialist).
 
@@ -708,7 +708,7 @@ rodou normalmente (lendo o checkout direto) e agora oferece bootstrapar a suite 
 repo origin (fase 2 = decisão de time):
 
 ```bash
-cd ~/.dotfiles-ai
+cd ~/cangaco/.ai
 git checkout -b feat/agents-<slug>-suite
 git add claude/agents/isaac/<slug>/
 git commit -m "$(cat <<'EOF'
@@ -718,7 +718,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 EOF
 )"
 git push -u origin feat/agents-<slug>-suite
-gh pr create --draft --repo grippado/dotfiles-ai --base main \
+gh pr create --draft --repo grippado/cangaco --base main \
   --title "feat(agents): suite de agents para <slug>" \
   --body-file <arquivo-de-corpo>
 ```

@@ -3,7 +3,7 @@
 #
 # Common pain: npm globals don't follow you across node versions. Install
 # something in v22, switch to v25, and it's gone. This script keeps a
-# registry of "blessed" globals (~/.dotfiles-ai/npm-globals.txt) and ensures
+# registry of "blessed" globals (~/cangaco/.ai/npm-globals.txt) and ensures
 # they're installed in every fnm-managed node version.
 #
 # Usage:

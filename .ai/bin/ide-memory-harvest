@@ -2,7 +2,7 @@
 #
 # ide-memory-harvest — ENTRYPOINT do harvester de memorias de IDEs/CLIs de IA.
 #
-# Orquestra os adapters em ~/.dotfiles-ai/bin/ide-adapters/<name>.sh, faz merge
+# Orquestra os adapters em ~/cangaco/.ai/bin/ide-adapters/<name>.sh, faz merge
 # do JSONL normalizado, deduplica contra historico (.seen-ids.txt) e emite em
 # stdout SOMENTE os itens novos. NAO avanca watermark por padrao.
 #
@@ -23,7 +23,7 @@
 set -uo pipefail
 
 # --- Paths ---------------------------------------------------------------
-ADAPTER_DIR="${IDE_ADAPTER_DIR:-$HOME/.dotfiles-ai/bin/ide-adapters}"
+ADAPTER_DIR="${IDE_ADAPTER_DIR:-$HOME/cangaco/.ai/bin/ide-adapters}"
 STATE_DIR="${IDE_HARVEST_STATE_DIR:-$HOME/.notes/6-audits/ide-memories}"
 WATERMARK="$STATE_DIR/.watermark.json"
 SEEN_IDS="$STATE_DIR/.seen-ids.txt"

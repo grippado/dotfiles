@@ -25,7 +25,7 @@ localmente (modelo `all-MiniLM-L6-v2` via transformers.js). Nada do segundo cér
 ## Rodar / manter
 
 ```bash
-cd ~/.dotfiles-ai/notes-mcp
+cd ~/cangaco/.ai/notes-mcp
 
 pnpm install        # uma vez (precisa de build nativo: sharp + onnxruntime)
 pnpm build          # compila TS -> dist/
@@ -51,7 +51,7 @@ Adicionar ao `~/Library/Application Support/Claude/claude_desktop_config.json`:
   "mcpServers": {
     "notes": {
       "command": "/Users/grippado/.local/share/fnm/node-versions/v25.8.1/installation/bin/node",
-      "args": ["/Users/grippado/.dotfiles-ai/notes-mcp/dist/index.js"],
+      "args": ["/Users/grippado/cangaco/.ai/notes-mcp/dist/index.js"],
       "env": {
         "NOTES_VAULT_PATH": "/Users/grippado/.notes"
       }

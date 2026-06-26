@@ -14,7 +14,7 @@ Read these files before delegating to any specialist:
 3. `fixtures/base-fixture.ts` — how scenario + poms fixtures are wired
 4. `fixtures/gateways/types/index.ts` — `ScenarioPayload`, `GatewayNames`, `GatewayPayloads`
 5. `fixtures/poms/index.ts` — POM factory and available POMs
-6. `AGENT.md` (this repo's agent index, at `~/.dotfiles-ai/claude/agents/isaac/e2e-tests/AGENT.md`)
+6. `AGENT.md` (this repo's agent index, at `~/cangaco/.ai/claude/agents/isaac/e2e-tests/AGENT.md`)
 
 If the PR touches a specific domain (`specs/fatura-isaac/`, `specs/meu-arco/`, etc.), also read:
 - The existing `scenarios.ts` in that domain to understand the gateway payload shape.

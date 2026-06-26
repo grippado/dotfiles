@@ -3,7 +3,7 @@
 Adapters do harvester de memorias de IDEs/CLIs de IA. Cada adapter extrai itens
 de UMA fonte (Cursor, gemini-cli, opencode, copilot, claude-desktop, ...) e os
 emite no contrato normalizado abaixo. O entrypoint
-`~/.dotfiles-ai/bin/ide-memory-harvest` orquestra, faz merge e deduplica.
+`~/cangaco/.ai/bin/ide-memory-harvest` orquestra, faz merge e deduplica.
 
 Coloque cada adapter aqui como `<name>.sh` (executavel). O `<name>` (sem `.sh`)
 e usado como chave de `--since` no watermark e deve bater com o campo `tool`

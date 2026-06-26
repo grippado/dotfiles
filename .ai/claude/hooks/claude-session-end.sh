@@ -6,14 +6,14 @@
 # o `/context-save` nela — reusando o comando existente como motor de síntese.
 # Sessões triviais (só perguntas, sem edits/agents/commits) são puladas, sem spam.
 #
-# Wire em ~/.claude/settings.json (gerado de ~/.dotfiles-ai/claude/settings.base.json):
+# Wire em ~/.claude/settings.json (gerado de ~/cangaco/.ai/claude/settings.base.json):
 #
 #   {
 #     "hooks": {
 #       "SessionEnd": [
 #         { "matcher": "", "hooks": [
 #           { "type": "command",
-#             "command": "$HOME/.dotfiles-ai/claude/hooks/claude-session-end.sh" }
+#             "command": "$HOME/cangaco/.ai/claude/hooks/claude-session-end.sh" }
 #         ]}
 #       ]
 #     }

@@ -61,7 +61,7 @@ Read these in Step 0 (repo-owner loads all before delegating):
 - `CLAUDE.md` — project overview, architecture summary, Django patterns, frontend stack, commit conventions
 - `eslint.config.mjs` — ESLint flat config (typescript-eslint strict, import-x, prettier, jsdoc, standard-react)
 - `tsconfig.json` — TypeScript strict mode, path aliases (`@assets`, `@frontend`, `@core`, `@api`, `@ui`, etc.)
-- `AGENT.md` (this file, at `~/.dotfiles-ai/claude/agents/isaac/sigaweb/AGENT.md`)
+- `AGENT.md` (this file, at `~/cangaco/.ai/claude/agents/isaac/sigaweb/AGENT.md`)
 
 ## Known pitfalls (real patterns observed in code)
 

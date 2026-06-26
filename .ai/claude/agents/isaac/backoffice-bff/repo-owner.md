@@ -13,7 +13,7 @@ Read these files before delegating to any specialist:
 2. `.claude/docs/architecture.md` — full directory tree, module breakdown, static pitfalls
 3. `.claude/docs/coding-standards.md` — naming, HTTP headers, correlation-id, legacy antipatterns
 4. `src/env/index.ts` — Zod-validated env vars (understand what's required)
-5. `AGENT.md` (this repo's agent index, at `~/.dotfiles-ai/claude/agents/isaac/backoffice-bff/AGENT.md`)
+5. `AGENT.md` (this repo's agent index, at `~/cangaco/.ai/claude/agents/isaac/backoffice-bff/AGENT.md`)
 
 If the PR touches a specific module, also read:
 - `src/modules/<name>/docs/` if it exists

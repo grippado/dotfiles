@@ -405,7 +405,7 @@ dotfiles-ai/
 - Reversão: `dotfiles-ai/uninstall.sh` (TODO) removeria os symlinks; ou manualmente, `cat ~/.claude/.atlas-managed | xargs rm` + `find ~/.claude -maxdepth 2 -type l -lname '*dotfiles-ai*' -delete`.
 
 **Repos relacionados.**
-- `git@github.com:grippado/dotfiles-ai.git` — esta arquitetura
+- `git@github.com:grippado/cangaco.git` — esta arquitetura
 - `git@github.com:grippado/ai-memory-sync.git` — hooks `Stop`/`SessionStart` referenciados pelo `settings.base.json`. Clone obrigatório em cada máquina (em `$HOME/.ai-memory-sync`).
 - `git@github.com:grippado/notes.git` — vault Obsidian (`$NOTES_VAULT`).
 

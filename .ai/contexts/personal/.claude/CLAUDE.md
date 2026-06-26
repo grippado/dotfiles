@@ -1,7 +1,7 @@
 # Personal Workspace — Gabriel Gripp
 
 > Carregado automaticamente quando `cwd` está sob `/Users/grippado/www/personal/*`.
-> Source-of-truth: `~/.dotfiles-ai/contexts/personal/.claude/CLAUDE.md`.
+> Source-of-truth: `~/cangaco/.ai/contexts/personal/.claude/CLAUDE.md`.
 
 ## Repos neste workspace
 
@@ -61,6 +61,6 @@ Candidatos:
 
 ## O que está fora deste contexto
 
-- **Arco/OlaIsaac/ClassApp** → `~/.dotfiles-ai/contexts/arco/.claude/` (carrega quando em `~/www/isaac/`)
+- **Arco/OlaIsaac/ClassApp** → `~/cangaco/.ai/contexts/arco/.claude/` (carrega quando em `~/www/isaac/`)
 - **Comandos transversais** (`dep-check`, `explain`, `quick-commit`, `review-changes`, `roast`, `scaffold`, `pr-report`, `organize`, `ship`) → global `~/.claude/`
 - **MCPs transversais** (Google Calendar, Google Drive) → global

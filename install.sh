@@ -86,7 +86,7 @@ LOCALEOF
 fi
 
 # ── Claude Code Configuration ────────────────────────────────
-# Config do Claude Code e gerenciada por ~/.dotfiles-ai/install.sh (fonte da
+# Config do Claude Code e gerenciada por ~/cangaco/.ai/install.sh (fonte da
 # verdade). Este repo nao escreve em ~/.claude.
 
 # ── Terminal (Ghostty + tmux + sesh) ─────────────────────────

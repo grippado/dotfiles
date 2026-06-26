@@ -9,7 +9,7 @@ Source of truth for my Claude Code configuration across machines (pessoal + Arco
 ### Personal (macOS, `~` = `/Users/grippado`)
 
 ```bash
-cd ~/.dotfiles-ai
+cd ~/cangaco/.ai
 ./install.sh --machine personal --dry-run   # inspect
 ./install.sh --machine personal             # apply
 ```
@@ -18,7 +18,7 @@ Add to `~/.zshrc_local` (and `source ~/.zshrc_local` from `~/.zshrc`):
 
 ```bash
 export DOTFILES_AI_MACHINE=personal
-source "$HOME/.dotfiles-ai/machines/$DOTFILES_AI_MACHINE/env.sh"
+source "$HOME/cangaco/.ai/machines/$DOTFILES_AI_MACHINE/env.sh"
 ```
 
 Then: `exec zsh && ./scripts/doctor.sh`.
@@ -27,7 +27,7 @@ Then: `exec zsh && ./scripts/doctor.sh`.
 
 ```bash
 cd /Volumes/gabriel.gripp/www/personal
-git clone git@github.com:grippado/dotfiles-ai.git
+git clone git@github.com:grippado/cangaco.git
 cd dotfiles-ai
 ./install.sh --machine arco --dry-run
 ./install.sh --machine arco
@@ -36,7 +36,7 @@ cd dotfiles-ai
 `~/.zshrc_local`:
 ```bash
 export DOTFILES_AI_MACHINE=arco
-source "$HOME/.dotfiles-ai/machines/$DOTFILES_AI_MACHINE/env.sh"
+source "$HOME/cangaco/.ai/machines/$DOTFILES_AI_MACHINE/env.sh"
 ```
 
 Plus clone the memory-sync repo:

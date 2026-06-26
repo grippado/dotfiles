@@ -7,7 +7,7 @@ Workspace overlay para `/Users/grippado/www/personal/` (FlagBridge, gripp-link, 
 Camada intermediária entre o Claude Code global (`~/.claude/`) e os repos individuais. Carregada automaticamente pelo Claude Code quando `cwd` está sob `/Users/grippado/www/personal/*`, via symlink:
 
 ```
-/Users/grippado/www/personal/.claude  →  ~/.dotfiles-ai/contexts/personal/.claude
+/Users/grippado/www/personal/.claude  →  ~/cangaco/.ai/contexts/personal/.claude
 ```
 
 O symlink é criado pelo `install.sh`.
