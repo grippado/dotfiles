@@ -121,10 +121,39 @@ Persiste o contexto da sessão atual (conversa + agents que rodaram) como nota n
    NÃO copiar diffs de código nem outputs longos — referenciar paths e descrever a mudança.
    ```
 
-6. **Reportar ao usuário**:
+6. **Push do vault pro origin** (SÓ na máquina `arco`, logo após a nota ser criada):
+
+   **Guard de máquina:** este push só acontece quando `$DOTFILES_AI_MACHINE == "arco"`. O skill é compartilhado entre máquinas via dotfiles; em qualquer outra máquina (pessoal etc.) o push é **pulado** — lá o fluxo é puxar e rodar `/organize`, não produzir+pushar. Confirmar a máquina antes:
+
+   ```bash
+   if [ "$DOTFILES_AI_MACHINE" = "arco" ]; then
+     cd ~/.notes
+     git add -A
+     # commitar só se houver algo staged:
+     git commit -m "$(cat <<'EOF'
+   chore(vault): sync inbox e pendências via context-save
+
+   Co-Authored-By: Claude <noreply@anthropic.com>
+   EOF
+   )"
+     git push
+   else
+     echo "máquina != arco ($DOTFILES_AI_MACHINE) — push do vault pulado por design"
+   fi
+   ```
+
+   Regras do push:
+   - **Só na arco.** Em outra máquina, pular e reportar que pulou (não é erro).
+   - Commitar **tudo** que estiver pendente no vault (a nota recém-criada + qualquer coisa não-commitada de sessões anteriores) — o objetivo é deixar o origin completo, não só a nota desta sessão.
+   - Se o working tree já estiver limpo E local em sync com `origin/main`, pular silenciosamente.
+   - Mensagem: Conventional Commits + trailer `Co-Authored-By: Claude <noreply@anthropic.com>` via HEREDOC. Sem em-dashes.
+   - **Best-effort**: se o push falhar (sem rede, conflito, sem auth), avisar o usuário e NÃO travar — a nota já está salva localmente. Reportar o erro pra resolução manual.
+
+7. **Reportar ao usuário**:
    - Path absoluto da nota criada
    - `type` canônico, `context` (chute) e `execution_status` que foram inscritos
    - Quantas sessões órfãs foram incluídas
+   - Resultado do push pro origin (commit SHA + branch, ou "nada pendente", ou "pulado: máquina != arco", ou o erro se falhou)
    - Sugestão: "Rode `/organize` quando quiser processar o inbox (rotear pro contexto + scouter resolver `issue_id`)"
 
 ## Rules
@@ -136,3 +165,4 @@ Persiste o contexto da sessão atual (conversa + agents que rodaram) como nota n
 - Se já existe nota com mesmo timestamp+slug, incrementar HH:MM (não sobrescrever)
 - Acentuação PT-BR obrigatória no conteúdo (slug e tags ficam ASCII)
 - Se a sessão atual está vazia/trivial (ex: usuário acabou de abrir e só perguntou uma coisa simples), **avisar** e perguntar se ainda assim deve salvar — não criar nota por reflexo
+- Fazer o push do `~/.notes` pro origin ao final (passo 6) **somente na máquina `arco`** (`$DOTFILES_AI_MACHINE == "arco"`), best-effort. É o que permite rodar `/organize` na máquina pessoal. Em qualquer outra máquina, pular o push (não é erro). Fora desse guard, nunca pular por iniciativa própria.
