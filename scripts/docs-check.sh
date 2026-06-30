@@ -2,9 +2,9 @@
 # Validates documentation consistency across the cangaço repo.
 # Usage: scripts/docs-check.sh [--verbose]
 #
-# Checks sub-docs (READMEs, ARCHITECTURE.md, CHEATSHEET.md) for:
+# Checks sub-docs (READMEs, ARCHITECTURE.md, CHEATSHEET.md) and Arco configs for:
 #   - stale "dotfiles-ai" references (except vault runbook paths)
-#   - wrong Arco paths (/Volumes/gabriel.gripp)
+#   - wrong Arco paths (/Volumes/*, /Users/grippado/www/isaac)
 #   - wrong agent count ("23 agents")
 #   - broken relative markdown links
 
@@ -60,11 +60,17 @@ for f in "${DOC_FILES[@]}"; do
     [ "$VERBOSE" -eq 1 ] && echo "      $content"
   done < <(grep -n 'dotfiles-ai' "$f" 2>/dev/null || true)
 
-  # Wrong Arco SMB path in docs
+  # Wrong Arco SMB/mount paths in docs
   while IFS= read -r line; do
     lineno="${line%%:*}"
-    fail "$rel:$lineno wrong Arco path: /Volumes/gabriel.gripp (use /Users/gabriel.gripp)"
-  done < <(grep -n '/Volumes/gabriel\.gripp' "$f" 2>/dev/null || true)
+    fail "$rel:$lineno wrong Arco path: /Volumes/... (use /Users/gabriel.gripp)"
+  done < <(grep -n '/Volumes/' "$f" 2>/dev/null || true)
+
+  # Personal home used where Arco workspace is meant
+  while IFS= read -r line; do
+    lineno="${line%%:*}"
+    fail "$rel:$lineno wrong Arco workspace path: /Users/grippado/www/isaac (use /Users/gabriel.gripp/www/isaac)"
+  done < <(grep -n '/Users/grippado/www/isaac' "$f" 2>/dev/null || true)
 
   # Wrong agent count
   while IFS= read -r line; do
@@ -74,7 +80,34 @@ for f in "${DOC_FILES[@]}"; do
 done
 
 if [ "$FAIL" -eq 0 ]; then
-  ok "no banned patterns found"
+  ok "no banned patterns in docs"
+fi
+
+echo
+info "[arco path config]"
+
+mapfile -t ARCO_FILES < <(
+  find "$REPO/.ai/machines/arco" "$REPO/.ai/contexts/arco" -type f \
+    ! -path '*/.git/*' 2>/dev/null | sort
+)
+
+for f in "${ARCO_FILES[@]}"; do
+  rel="${f#$REPO/}"
+  CHECKED=$((CHECKED + 1))
+
+  while IFS= read -r line; do
+    lineno="${line%%:*}"
+    fail "$rel:$lineno wrong Arco path: /Volumes/... (use /Users/gabriel.gripp)"
+  done < <(grep -n '/Volumes/' "$f" 2>/dev/null || true)
+
+  while IFS= read -r line; do
+    lineno="${line%%:*}"
+    fail "$rel:$lineno wrong Arco workspace path: /Users/grippado/www/isaac (use /Users/gabriel.gripp/www/isaac)"
+  done < <(grep -n '/Users/grippado/www/isaac' "$f" 2>/dev/null || true)
+done
+
+if [ "${#ARCO_FILES[@]}" -gt 0 ] && [ "$FAIL" -eq 0 ]; then
+  ok "arco configs clean"
 fi
 
 echo

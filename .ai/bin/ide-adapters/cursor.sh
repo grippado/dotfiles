@@ -89,6 +89,7 @@ _is_log_noise() {
 # emitir cwd_hint lixo. Vazio se nada confiavel for encontrado.
 _infer_cwd() {
   printf '%s' "$1" \
+    # /Volumes/ kept for harvesting legacy paths stored in Cursor's DB
     | grep -oE '(~|/Users/[A-Za-z0-9._-]+|/Volumes/[A-Za-z0-9._-]+)(/www/(personal|isaac)/[A-Za-z0-9._-]+|/\.dotfiles-ai|/\.notes)' \
     | head -1
 }

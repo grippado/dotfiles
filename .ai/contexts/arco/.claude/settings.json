@@ -1,5 +1,5 @@
 {
-  "_doc": "Arco workspace overlay. Activated when cwd is under /Users/grippado/www/isaac/*. Plugins and permissions here are SCOPED to this workspace only — they do not leak to global Claude sessions.",
+  "_doc": "Arco workspace overlay. Activated when cwd is under /Users/gabriel.gripp/www/isaac/*. Plugins and permissions here are SCOPED to this workspace only — they do not leak to global Claude sessions.",
   "permissions": {
     "defaultMode": "auto"
   },
@@ -29,7 +29,7 @@
     "olaisaac-arco-agents": {
       "source": {
         "source": "directory",
-        "path": "/Users/grippado/www/isaac/arco-agents"
+        "path": "/Users/gabriel.gripp/www/isaac/arco-agents"
       }
     }
   }
