@@ -1,6 +1,6 @@
 # Arco / OlaIsaac / ClassApp Workspace
 
-> Carregado automaticamente quando `cwd` está sob `/Users/grippado/www/isaac/*`.
+> Carregado automaticamente quando `cwd` está sob `/Users/gabriel.gripp/www/isaac/*`.
 > Source-of-truth: `~/cangaco/.ai/contexts/arco/.claude/CLAUDE.md`.
 
 ## Repos neste workspace

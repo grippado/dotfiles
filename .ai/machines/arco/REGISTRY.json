@@ -1,5 +1,5 @@
 {
-  "_doc": "Arco machine — source of truth for Claude Atlas scope registry on the work machine. Edited by hand. Read by ~/.claude/bin/atlas-sync. See claude/ARCHITECTURE.md for full context. Paths use ~ (expanded to $HOME at runtime) so they work from both the Arco machine itself ($HOME=/Users/gabriel.gripp) and from the personal machine via SMB mount ($HOME=/Volumes/gabriel.gripp).",
+  "_doc": "Arco machine — source of truth for Claude Atlas scope registry on the work machine. Edited by hand. Read by ~/.claude/bin/atlas-sync. See claude/ARCHITECTURE.md for full context. Paths use ~ (expanded to $HOME at runtime on the physical machine; Arco: /Users/gabriel.gripp).",
   "version": 2,
   "scopes": {
     "notes": {

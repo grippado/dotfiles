@@ -1,106 +1,197 @@
-# dotfiles-ai
+# `.ai/` — o cérebro Atlas
 
-Source of truth for my Claude Code configuration across machines (pessoal + Arco). Versioned configs that get symlinked into `~/.claude/` per-machine, with overlays for machine-specific plugins/paths.
+> Parte do [cangaço](../README.md). Este doc é a fonte da verdade para a configuração do Claude Code: comandos, agents, skills, MCP local de notas e modelo multi-máquina.
 
-> Configs **dentro de repos de produto** (`<repo>/.claude/...`) **não** entram aqui — continuam versionadas em cada repo.
+O `.ai/` é a **fonte única da verdade** da minha configuração do Claude Code. Tudo aqui é versionado e espelhado por symlink em `~/.claude/` em cada máquina. A arquitetura, ADRs e princípios vivem em [`claude/ARCHITECTURE.md`](claude/ARCHITECTURE.md).
 
-## Quick start
+> Configs **dentro de repos de produto** (`<repo>/.claude/...`) **não** entram aqui — continuam versionadas em cada repo. O Atlas só indexa (symlinks) ou mantém o que é global.
 
-### Personal (macOS, `~` = `/Users/grippado`)
+---
+
+## Índice
+
+- [Início rápido](#início-rápido)
+- [Anatomia](#anatomia)
+- [O que vive aqui](#o-que-vive-aqui)
+- [Duas camadas de comandos](#duas-camadas-de-comandos)
+- [Modelo multi-máquina](#modelo-multi-máquina)
+- [Workflow](#workflow)
+- [Validação](#validação)
+- [Docs relacionados](#docs-relacionados)
+
+---
+
+## Início rápido
+
+### Personal (macOS, `$HOME` = `/Users/grippado`)
 
 ```bash
 cd ~/cangaco/.ai
-./install.sh --machine personal --dry-run   # inspect
-./install.sh --machine personal             # apply
+./install.sh --machine personal --dry-run   # inspeciona
+./install.sh --machine personal             # aplica
 ```
 
-Add to `~/.zshrc_local` (and `source ~/.zshrc_local` from `~/.zshrc`):
+Adicionar ao `~/.zshrc_local` (e `source ~/.zshrc_local` a partir do `~/.zshrc`):
 
 ```bash
 export DOTFILES_AI_MACHINE=personal
 source "$HOME/cangaco/.ai/machines/$DOTFILES_AI_MACHINE/env.sh"
 ```
 
-Then: `exec zsh && ./scripts/doctor.sh`.
+Depois: `exec zsh && ./scripts/doctor.sh`.
 
-### Arco (macOS, `$HOME` = `/Volumes/gabriel.gripp`)
+### Arco (macOS, `$HOME` = `/Users/gabriel.gripp`)
 
 ```bash
-cd /Volumes/gabriel.gripp/www/personal
-git clone git@github.com:grippado/cangaco.git
-cd dotfiles-ai
+cd ~/cangaco/.ai
 ./install.sh --machine arco --dry-run
 ./install.sh --machine arco
 ```
 
 `~/.zshrc_local`:
+
 ```bash
 export DOTFILES_AI_MACHINE=arco
 source "$HOME/cangaco/.ai/machines/$DOTFILES_AI_MACHINE/env.sh"
 ```
 
-Plus clone the memory-sync repo:
+Clone do memory-sync (obrigatório em toda máquina):
+
 ```bash
-git clone git@github.com:grippado/ai-memory-sync.git \
-  /Volumes/gabriel.gripp/www/personal/ai-memory-sync
+git clone git@github.com:grippado/ai-memory-sync.git ~/.ai-memory-sync
 ```
 
-## Layout
+### VPS (servidor headless)
+
+```bash
+cd ~/cangaco/.ai
+./install.sh --machine vps --dry-run
+./install.sh --machine vps
+```
+
+> ⚠️ **Rode o install na máquina física, nunca por mount remoto.** O `atlas-sync` expande `$HOME` em tempo de execução para gravar paths absolutos nos symlinks. Por SMB/SSH montado, o `$HOME` seria o da máquina errada.
+
+---
+
+## Anatomia
 
 ```
-dotfiles-ai/
-├── claude/                        # symlinked into ~/.claude/
-│   ├── CLAUDE.md                  # global instructions
-│   ├── ARCHITECTURE.md            # ADRs & Atlas principles
-│   ├── settings.base.json         # base settings (hooks, statusline, theme)
-│   ├── statusline-command-v2.sh
-│   ├── commands/                  # 10 manual commands (ship, organize, qa, …)
-│   ├── agents/                    # global + Arco-specific agents + categories
-│   ├── bin/                       # atlas-sync, atlas-snapshot
-│   └── hooks/                     # (kept thin — real hooks live in ai-memory-sync)
+.ai/
+├── install.sh                     # instalador idempotente (--machine, --dry-run)
+├── claude/                        # symlinkado em ~/.claude/
+│   ├── CLAUDE.md                  # instruções globais
+│   ├── ARCHITECTURE.md            # ADRs e princípios Atlas
+│   ├── settings.base.json         # settings compartilhados (hooks, statusline, theme)
+│   ├── commands/                  # 18 comandos globais
+│   ├── agents/                    # 21 agents globais + suites Isaac
+│   ├── skills/                    # maria-bonita (Lampião / Maria Bonita)
+│   └── bin/                       # atlas-sync, atlas-snapshot, ccstatusline
 ├── machines/
-│   ├── personal/
-│   │   ├── REGISTRY.json          # scopes for personal
-│   │   ├── settings.overlay.json  # vercel + arco-default plugins
-│   │   └── env.sh                 # NOTES_VAULT etc.
-│   └── arco/
-│       ├── REGISTRY.json          # scopes for arco (~/www/isaac/* repos)
-│       ├── settings.overlay.json  # figma, linear, slack, arco-ai-plugins…
-│       └── env.sh                 # NOTES_VAULT=/Volumes/...
-├── scripts/
-│   ├── merge-settings.sh          # base + overlay → ~/.claude/settings.json
-│   └── doctor.sh                  # sanity check the install
-├── install.sh                     # idempotent installer (--machine, --dry-run)
-└── README.md
+│   ├── personal/                  # REGISTRY + overlay + env.sh
+│   ├── arco/
+│   └── vps/
+├── contexts/                      # overlays de workspace (personal / arco)
+├── notes-mcp/                     # MCP local sobre o vault Obsidian
+├── bin/                           # ide-memory-harvest + ide-adapters
+└── scripts/
+    ├── doctor.sh                  # sanity check da instalação
+    ├── merge-settings.sh          # base + overlay → ~/.claude/settings.json
+    └── fnm-sync-globals.sh        # npm globals consistentes entre versões Node
 ```
+
+---
+
+## O que vive aqui
+
+| Item | Quantidade | Onde |
+|------|------------|------|
+| **Comandos** (slash commands globais) | 18 | [`claude/commands/`](claude/commands/) |
+| **Agents** globais | 21 | [`claude/agents/`](claude/agents/) · [catálogo](claude/agents/README.md) |
+| **Agents** Isaac (por repo) | 6 suites | [`claude/agents/isaac/`](claude/agents/isaac/) · [AGENT_SPEC](claude/agents/isaac/AGENT_SPEC.md) |
+| **Skills** | maria-bonita | [`claude/skills/`](claude/skills/) |
+| **MCP local de notas** | notes-mcp | [`notes-mcp/`](notes-mcp/) |
+| **Harvest de memórias IDE** | ide-adapters | [`bin/ide-adapters/`](bin/ide-adapters/) |
+
+---
+
+## Duas camadas de comandos
+
+Há dois mecanismos complementares para slash commands em `~/.claude/commands/`:
+
+1. **Globais genéricos** — `.md` commitados em `claude/commands/`. Symlinkados pelo `install.sh`. Funcionam em qualquer codebase (`ship`, `qa`, `quick-commit`, `explain`, `scaffold`, …).
+2. **Escopados por repo** — symlinks gerados pelo `atlas-sync` apontando para `<repo>/.claude/commands/*.md`. O repo é a fonte da verdade; o Atlas só os torna alcançáveis globalmente. Nomenclatura: `<verbo>:<scope>.md` (ex.: `organize:notes.md`). Se o frontmatter define `alias_global: true`, o `atlas-sync` também cria `<verbo>.md` como alias global.
+
+---
+
+## Modelo multi-máquina
+
+| Máquina | Perfil | `$HOME` típico |
+|---------|--------|----------------|
+| **personal** | Mac pessoal | `/Users/grippado` |
+| **arco** | Mac de trabalho | `/Users/gabriel.gripp` |
+| **vps** | servidor headless | `/root` ou similar |
+
+Cada perfil traz:
+
+- `REGISTRY.json` — fonte da verdade de `scope → path` (onde mora cada repo de produto).
+- `settings.overlay.json` — plugins e ajustes específicos, mesclados sobre `settings.base.json`.
+- `env.sh` — variáveis de ambiente (`NOTES_VAULT`, `DOTFILES_AI_PLAN`, …).
+
+Selecione o perfil com `--machine <perfil>` ou exportando `DOTFILES_AI_MACHINE`. Mover um repo? Edita uma linha no `REGISTRY.json` e roda `atlas-sync`.
+
+---
 
 ## Workflow
 
-- **Add a new global command/agent** → drop the `.md` in `claude/commands/` or `claude/agents/`, commit, push. Other machine: `git pull && ./install.sh --machine <m>`.
-- **Add a new scope** → edit `machines/<m>/REGISTRY.json`, commit, push, then on the target machine: `git pull && ~/.claude/bin/atlas-sync` (or just re-run `./install.sh --machine <m>` — it calls atlas-sync at the end).
-- **Tweak settings** → edit `claude/settings.base.json` (shared) or `machines/<m>/settings.overlay.json` (machine-only), then `./scripts/merge-settings.sh <m>`.
-- **Move a command between machines** → it's a single `git push`/`pull`.
+- **Novo comando/agent global** → drop o `.md` em `claude/commands/` ou `claude/agents/`, commit, push. Na outra máquina: `git pull && ./install.sh --machine <m>`.
+- **Novo scope** → edita `machines/<m>/REGISTRY.json`, commit, push, depois na máquina-alvo: `git pull && ~/.claude/bin/atlas-sync` (ou re-roda `./install.sh`).
+- **Ajustar settings** → edita `claude/settings.base.json` (compartilhado) ou `machines/<m>/settings.overlay.json` (só da máquina), depois `./scripts/merge-settings.sh <m>`.
+- **Novo contexto de workspace** → ver runbook no vault: `~/.notes/1-contexts/dotfiles-ai/runbooks/add-context.md`.
 
-## ⚠️ Run installs on the physical machine
+---
 
-`atlas-sync` (called automatically at the end of `install.sh`) expands `~`/`$HOME` at runtime to bake absolute paths into the symlinks it creates. **Do not run install over a remote/SMB mount of another machine** — `$HOME` will be the *local* user, and the symlinks will point at paths that don't exist on the target machine. Always SSH/sit-at-keyboard on the machine you're configuring.
+## Validação
 
-## Two layers of commands
+```bash
+# sanity check da instalação Atlas
+~/cangaco/.ai/scripts/doctor.sh
 
-There are two complementary mechanisms for slash commands in `~/.claude/commands/`:
+# regenera ~/.claude/settings.json a partir de base + overlay
+~/cangaco/.ai/scripts/merge-settings.sh <perfil>
 
-1. **Global manuals** — `.md` files committed to this repo at `claude/commands/`. Symlinked by `install.sh`. These are the "always available everywhere" commands (`ship`, `qa`, `pr-report`, `review-arco`, etc.).
-2. **Scoped from REGISTRY** — symlinks generated by `atlas-sync` pointing into each repo's own `<repo>/.claude/commands/*.md`. The repo is the source of truth; atlas-sync just makes them discoverable globally. Naming convention: `<verb>:<scope>.md` (e.g. `organize:notes.md`, `workflow:backoffice.md`). If a command's frontmatter sets `alias_global: true`, atlas-sync also creates `<verb>.md` as a global alias (that's how `/organize` works without the `:notes` suffix).
+# valida consistência da documentação (sem drift de nomenclatura/paths)
+~/cangaco/scripts/docs-check.sh
+```
 
-## Runtime files NOT in this repo
+Toda mudança que o `atlas-sync` faz é rastreada e reversível: ele só remove o que ele mesmo criou (`.atlas-managed`), nunca toca em arquivo escrito à mão.
 
-These live in `~/.claude/` directly and never get committed:
+---
+
+## Runtime files que NÃO entram no repo
+
+Estes vivem em `~/.claude/` diretamente e nunca são commitados:
+
 - `plugins/`, `projects/`, `cache/`, `file-history/`, `paste-cache/`, `shell-snapshots/`
 - `backups/`, `history.jsonl`, `sessions/`, `todos/`, `ide/`, `telemetry/`, `statsig/`
 - `*-cost-day*.json`, `stats-cache.json`, `mcp-needs-auth-cache.json`, `.atlas-managed`
-- The final merged `settings.json` (regenerated by `merge-settings.sh`)
+- O `settings.json` final (regenerado por `merge-settings.sh`)
 
-## Related repos
+---
 
-- `git@github.com:grippado/ai-memory-sync.git` — memory hooks (Stop/SessionStart) referenced by `settings.base.json`. Clone to `$HOME/.ai-memory-sync` on every machine.
-- `git@github.com:grippado/notes.git` — Obsidian vault. `$NOTES_VAULT` points here. `/organize`, `/review-arco`, `/review-arco-answer` write to it.
+## Docs relacionados
+
+| Doc | Conteúdo |
+|-----|----------|
+| [README principal](../README.md) | Mapa do cangaço — quatro pilares, anatomia, início rápido |
+| [`claude/ARCHITECTURE.md`](claude/ARCHITECTURE.md) | ADRs, princípios, convenções de naming |
+| [`claude/agents/README.md`](claude/agents/README.md) | Catálogo dos 21 agents globais |
+| [`notes-mcp/README.md`](notes-mcp/README.md) | MCP local sobre o vault Obsidian |
+| [`contexts/arco/README.md`](contexts/arco/README.md) | Overlay do workspace Isaac |
+| [`contexts/personal/README.md`](contexts/personal/README.md) | Overlay do workspace pessoal |
+| [`bin/ide-adapters/README.md`](bin/ide-adapters/README.md) | Contrato dos adapters de memória IDE |
+| [`terminal/README.md`](../terminal/README.md) | Ghostty + tmux + frota de harnesses |
+
+## Repos relacionados
+
+- `git@github.com:grippado/ai-memory-sync.git` — hooks de memória (Stop/SessionStart) referenciados pelo `settings.base.json`. Clone em `$HOME/.ai-memory-sync` em toda máquina.
+- `git@github.com:grippado/notes.git` — vault Obsidian. `$NOTES_VAULT` aponta pra cá.

@@ -4,9 +4,7 @@
 #   export DOTFILES_AI_MACHINE=arco
 #   source "$HOME/cangaco/.ai/machines/$DOTFILES_AI_MACHINE/env.sh"
 #
-# Uses $HOME so it works from both:
-#   - the Arco machine itself ($HOME=/Users/gabriel.gripp)
-#   - the personal machine via SMB mount of Arco's home ($HOME=/Volumes/gabriel.gripp)
+# On the Arco machine: $HOME=/Users/gabriel.gripp
 
 export NOTES_VAULT="$HOME/.notes"
 

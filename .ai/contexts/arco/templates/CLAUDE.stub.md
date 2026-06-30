@@ -1,7 +1,7 @@
 # <Repo Name>
 
 > Stub mínimo de agent-readiness. Refinar conforme uso.
-> Workspace context: `/Users/grippado/www/isaac/.claude/CLAUDE.md`
+> Workspace context: `/Users/gabriel.gripp/www/isaac/.claude/CLAUDE.md`
 
 ## Stack
 - TODO: linguagem principal, framework, package manager
@@ -17,7 +17,7 @@
 ## Convenções
 - Commits: Conventional Commits + emoji (herdado do workspace)
 - PT-BR para comentários, EN para código
-- Ver workspace CLAUDE.md em `/Users/grippado/www/isaac/.claude/CLAUDE.md`
+- Ver workspace CLAUDE.md em `/Users/gabriel.gripp/www/isaac/.claude/CLAUDE.md`
 
 ## Owners / contato
 - TODO
