@@ -50,7 +50,7 @@ Em vez de configuração espalhada por quinze lugares, um bando só de configs, 
 | Pilar | O que é | Doc |
 |-------|---------|-----|
 | **Shell** | zsh + Oh-My-Zsh + Powerlevel10k, 150+ aliases, funções, FZF, FNM | (este README) |
-| **`.ai/` (Atlas)** | Fonte da verdade da config do Claude Code: 18 comandos, 23 agents, skills, MCP local de notas, modelo multi-máquina | [`.ai/README.md`](.ai/README.md) · [`ARCHITECTURE.md`](.ai/claude/ARCHITECTURE.md) |
+| **`.ai/` (Atlas)** | Fonte da verdade da config do Claude Code: 18 comandos, 21 agents, skills, MCP local de notas, modelo multi-máquina | [`.ai/README.md`](.ai/README.md) · [`ARCHITECTURE.md`](.ai/claude/ARCHITECTURE.md) |
 | **Terminal** | Ghostty (GPU) + tmux (persistência) + sesh/tmuxp para orquestrar uma frota de harnesses de IA | [`terminal/README.md`](terminal/README.md) · [`CHEATSHEET.md`](terminal/CHEATSHEET.md) |
 | **Editores** | Config versionada do Zed (settings, keymap, temas) e setup do Neovim (LazyVim) | (este README) |
 
@@ -122,7 +122,7 @@ cangaco/
 ├── zed/                  # settings, keymap e temas do Zed
 └── .ai/                  # cérebro Atlas (Claude Code)               -> README próprio
     ├── install.sh        # symlinks de config p/ ~/.claude (--machine, --dry-run)
-    ├── claude/           # CLAUDE.md, settings, 18 comandos, 23 agents, skills
+    ├── claude/           # CLAUDE.md, settings, 18 comandos, 21 agents, skills
     ├── machines/         # personal / arco / vps (REGISTRY + overlays + env)
     ├── contexts/         # templates de contexto por ambiente
     ├── notes-mcp/        # MCP local (stdio) sobre o vault Obsidian
@@ -201,7 +201,7 @@ O mesmo repo serve três perfis sem `if` espalhado: a diferença mora em [`.ai/m
 | Máquina | Perfil | `$HOME` típico |
 |---------|--------|----------------|
 | **personal** | Mac pessoal | `/Users/grippado` |
-| **arco** | Mac de trabalho | `/Volumes/gabriel.gripp` |
+| **arco** | Mac de trabalho | `/Users/gabriel.gripp` |
 | **vps** | servidor headless | `/root` ou similar |
 
 Cada perfil traz:
@@ -237,6 +237,9 @@ São carregados automaticamente pelo shell, mas vivem fora do versionamento.
 
 # regenera ~/.claude/settings.json a partir de base + overlay da máquina
 ~/cangaco/.ai/scripts/merge-settings.sh <perfil>
+
+# valida consistência da documentação (nomenclatura, paths, contagens)
+~/cangaco/scripts/docs-check.sh
 ```
 
 Adicionar um comando ou agent global é um `git push` de um lado e `git pull && ./install.sh --machine <perfil>` do outro. Toda mudança que o `atlas-sync` faz é rastreada e reversível: ele só remove o que ele mesmo criou, nunca toca em arquivo escrito à mão.

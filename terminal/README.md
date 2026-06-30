@@ -1,16 +1,27 @@
 # terminal/ — Ghostty + tmux + orquestração de harnesses
 
-Ecossistema de terminal do cangaço. Camadas independentes:
+> Parte do [cangaço](../README.md). Este doc é a fonte da verdade para o ecossistema de terminal: rendering, persistência e frota de agentes de IA.
 
-- **Ghostty** = rendering (GPU), splits/tabs efêmeros, quick terminal dropdown.
-- **tmux** = persistência de sessão + base programável da orquestração de agentes.
-- **sesh / tmuxp** = sessões e layouts declarativos.
-- **agent-dashboard** = painel TUI do estado de cada harness.
+Camadas independentes que, juntas, transformam o terminal num cockpit de orquestração:
+
+```
+  Ghostty (GPU, splits efêmeros)
+       │
+       ▼
+  tmux (persistência, prefix C-a)
+       │
+       ├── sesh / tmuxp (sessões declarativas, fleet)
+       └── agent-dashboard (estado dos harnesses)
+```
+
+Atalhos completos: [`CHEATSHEET.md`](CHEATSHEET.md).
+
+---
 
 ## Instalação
 
 ```bash
-./installers/terminal.sh   # idempotente; também roda dentro do install.sh
+./installers/terminal.sh   # idempotente; também roda dentro do install.sh da raiz
 ```
 
 Instala `tmux sesh tmuxp mprocs gum zoxide`, clona o TPM, builda o `agent-dashboard`
@@ -25,7 +36,17 @@ Instala `tmux sesh tmuxp mprocs gum zoxide`, clona o TPM, builda o `agent-dashbo
 Dentro do tmux, na primeira vez: `prefix + I` instala os plugins (o installer já
 faz isso headless numa máquina nova).
 
-## Atalhos
+---
+
+## Fluxo típico
+
+1. **Isolar** — `claude --worktree` (git worktree nativo).
+2. **Subir harnesses** — `agent-new fix-login`, `agent-new refactor`, … ou declarativo via `fleet` (`terminal/tmuxp/agent-fleet.yaml`).
+3. **Observar** — `prefix + D` abre o agent-dashboard (blocked / running / review / PR / merged) e despacha input pra quem travou.
+
+---
+
+## Atalhos essenciais
 
 tmux (prefix = `C-a`):
 
@@ -48,18 +69,16 @@ Shell:
 | `fleet` | sobe a frota de agentes (tmuxp agent-fleet.yaml) |
 | `agent-new <nome> [cmd]` | sobe um harness isolado (worktree) numa window própria |
 
-Ghostty: `cmd+\`` quick terminal · `cmd+d`/`cmd+shift+d` split · `cmd+alt+setas`
+Ghostty: `` cmd+` `` quick terminal · `cmd+d`/`cmd+shift+d` split · `cmd+alt+setas`
 navega · `cmd+shift+enter` zoom · `cmd+shift+r` reload config.
 
-## Orquestrar múltiplos harnesses
+> Tabela completa: [`CHEATSHEET.md`](CHEATSHEET.md).
 
-1. Isolamento: `claude --worktree` (git worktree nativo, sem gerenciar na mão).
-2. Subir vários: `agent-new fix-login`, `agent-new refactor`, … (cada um numa window).
-   Ou declarativo: edite `terminal/tmuxp/agent-fleet.yaml` e rode `fleet`.
-3. Observar: `prefix + D` abre o agent-dashboard (estado por agente: blocked /
-   running / review / PR / merged) e despacha input pra quem precisa.
+---
 
-### Plugin do agent-dashboard no Claude Code (rodar dentro do Claude Code)
+## Plugin do agent-dashboard no Claude Code
+
+Rodar dentro do Claude Code:
 
 ```
 /marketplace add bjornjee/agent-dashboard
@@ -69,6 +88,8 @@ navega · `cmd+shift+enter` zoom · `cmd+shift+r` reload config.
 
 Depois reinicie as sessões do Claude Code para os hooks ativarem.
 
+---
+
 ## Notas
 
 - **Starship não é usado**: o shell roda Powerlevel10k. Se um dia quiser trocar,
@@ -76,3 +97,13 @@ Depois reinicie as sessões do Claude Code para os hooks ativarem.
 - **Persistência**: `tmux-resurrect` + `tmux-continuum` salvam/restauram sessões
   a cada 15 min — sessões de agente sobrevivem a fechar a janela.
 - **Catppuccin tmux**: versão pinada (`v2.1.2`); a v2 quebrou a API da v1.
+
+---
+
+## Docs relacionados
+
+| Doc | Conteúdo |
+|-----|----------|
+| [README principal](../README.md) | Mapa do cangaço — pilar terminal |
+| [`CHEATSHEET.md`](CHEATSHEET.md) | Referência completa de atalhos tmux + Ghostty |
+| [`.ai/README.md`](../.ai/README.md) | Cérebro Atlas — orquestração de agentes Claude Code |

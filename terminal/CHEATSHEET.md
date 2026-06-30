@@ -1,6 +1,6 @@
 # 🐗 tmux cheat sheet — cangaço
 
-> **Prefix = `Ctrl+a`** (substitui o `Ctrl+b` padrão).
+> Parte do [terminal/](README.md). **Prefix = `Ctrl+a`** (substitui o `Ctrl+b` padrão).
 > Notação: `prefix c` = aperta `Ctrl+a`, **solta**, depois `c`.
 > `Ctrl+a` segurado junto da tecla só nos resize (`H/J/K/L`) que são repetíveis.
 

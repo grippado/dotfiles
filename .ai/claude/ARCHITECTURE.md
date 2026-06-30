@@ -2,8 +2,8 @@
 
 > Referência viva. Lê isso aqui antes de mexer em `~/.claude/`. Se mexeu e mudou um princípio, atualiza esse arquivo. Se não atualizou, daqui a 3 meses não vai entender o que tava pensando.
 
-**Última atualização:** 2026-04-30 (Fase 0)
-**Estado:** infraestrutura criada, nada de symlink ainda. Fase 1 começa depois da revisão.
+**Última atualização:** 2026-06-30
+**Estado:** ativo. Config versionada em `cangaco/.ai/`, symlinks em `~/.claude/` via `install.sh`, `atlas-sync` no fim do install, três perfis de máquina (`personal`, `arco`, `vps`). Ver [`.ai/README.md`](../../README.md).
 
 ---
 
@@ -357,28 +357,30 @@ Conexão com **Princípio 7** (drift detectado, não previsto): config ausente e
 - Pró: simplicidade inicial, foco em fundações.
 - Contra: catálogo vai ficar desatualizado. Aceitável até Fase 3 — onde, idealmente, eu já implemento o auto-gen junto.
 
-### ADR-010 — Configs Claude versionadas em `dotfiles-ai`; REGISTRY per-machine; settings = base + overlay
+### ADR-010 — Configs Claude versionadas em `cangaco/.ai/`; REGISTRY per-machine; settings = base + overlay
 
 **Contexto.** Em 2026-05-08 a infra ganhou uma segunda máquina (Arco/`gabriel.gripp`) via Claude Enterprise. Antes disso, `~/.claude/` era artesanal: arquivos manuais soltos, sem versionamento, e o Atlas vivia inteiramente dentro de `~/.claude/{bin,REGISTRY.json,ARCHITECTURE.md}`. Tentar replicar manualmente na Arco gerou drift imediato (commands faltando, agents stale, settings divergente). Princípio 1 (a verdade vive na fonte, não em cópias) ficou inviável de manter à mão entre 2 máquinas.
 
-**Decisão.** Tirar a fonte de verdade do `~/.claude/` e mover para um repo privado dedicado, `dotfiles-ai`:
+**Decisão.** Tirar a fonte da verdade do `~/.claude/` e mover para o subdiretório `.ai/` do repo `cangaco`:
 
 ```
-dotfiles-ai/
+cangaco/.ai/
 ├── claude/                       # symlinkado em ~/.claude/ (per-machine install.sh)
-│   ├── CLAUDE.md, ARCHITECTURE.md, statusline-command-v2.sh
+│   ├── CLAUDE.md, ARCHITECTURE.md
 │   ├── settings.base.json        # config compartilhada (hooks, statusline, theme)
-│   ├── commands/                 # globais manuais (ship, qa, /review-arco, etc.)
-│   ├── agents/                   # manuais + categorias (engineering, design, …)
-│   └── bin/                      # atlas-sync, atlas-snapshot
+│   ├── commands/                 # 18 globais (ship, qa, quick-commit, …)
+│   ├── agents/                   # 21 globais + suites Isaac
+│   └── bin/                      # atlas-sync, atlas-snapshot, ccstatusline
 ├── machines/<machine>/
 │   ├── REGISTRY.json             # scopes específicos da máquina
 │   ├── settings.overlay.json     # plugins + permissions per-machine
 │   └── env.sh                    # NOTES_VAULT etc. (ADR-009)
+├── contexts/                     # overlays de workspace (personal, arco)
+├── notes-mcp/                    # MCP local sobre vault Obsidian
 ├── scripts/
 │   ├── merge-settings.sh         # base + overlay → ~/.claude/settings.json (jq deep-merge)
 │   └── doctor.sh                 # sanity check
-└── install.sh                    # idempotente; aceita --machine personal|arco
+└── install.sh                    # idempotente; aceita --machine personal|arco|vps
 ```
 
 `install.sh` cria symlinks **arquivo a arquivo** (não dir-inteiro) em `~/.claude/commands/` e `~/.claude/agents/` — preserva os scoped symlinks que `atlas-sync` cria lado a lado dentro do mesmo diretório. Ao final, chama `atlas-sync` automaticamente.
@@ -387,13 +389,13 @@ dotfiles-ai/
 
 **Por quê base + overlay em settings?** A maior parte de `settings.json` é igual entre máquinas (hooks de memory-sync, statusline, theme). A divergência são plugins enabled e `permissions.defaultMode`. Manter dois `settings.json` completos duplica conteúdo e cria drift; usar base + overlay deep-merged via `jq '.[0] * .[1]'` garante que mudanças na base aparecem em ambas as máquinas no próximo `merge-settings.sh`.
 
-**Conexão com Princípios.** Reforça **Princípio 1** (fonte única — agora o repo, não dois `~/.claude/` desconectados). Reforça **Princípio 7** (drift detectado, não previsto): `doctor.sh` aponta divergências entre repo state e máquina local; `git status` no `dotfiles-ai` aponta mudanças locais não pushadas pra outra máquina.
+**Conexão com Princípios.** Reforça **Princípio 1** (fonte única — agora o repo, não dois `~/.claude/` desconectados). Reforça **Princípio 7** (drift detectado, não previsto): `doctor.sh` aponta divergências entre repo state e máquina local; `git status` no `cangaco` aponta mudanças locais não pushadas pra outra máquina.
 
 **Conexão com ADRs.** Substitui parcialmente ADR-001 (Symlinks antes de Plugins) — agora os symlinks apontam pra repo versionado, não pra arquivos artesanais soltos. Reforça ADR-009 (paths via env var): `env.sh` per-machine consolida as exports.
 
 **O que NÃO entra no repo.** Runtime files que mudam por uso normal: `plugins/`, `projects/`, `cache/`, `file-history/`, `paste-cache/`, `shell-snapshots/`, `backups/`, `history.jsonl`, `sessions/`, `todos/`, `ide/`, `telemetry/`, `statsig/`, custos diários, `mcp-needs-auth-cache.json`, e o `settings.json` final (regenerado por `merge-settings.sh`). Esses ficam em `~/.claude/` direto, sem symlink, sem git.
 
-**Pegadinha aprendida durante a migração.** `atlas-sync` expande `~`/`$HOME` em runtime para gravar paths absolutos em `~/.claude/.atlas-managed`. Rodar `install.sh` sobre **mount remoto/SMB** (ex.: `/Volumes/gabriel.gripp/...` da Arco vista do laptop pessoal) faz o `$HOME` ser o do laptop — paths gravados ficam inválidos quando a máquina remota é acessada localmente. Solução: rodar `install.sh` **fisicamente na máquina-alvo**. README do `dotfiles-ai` documenta isso explicitamente.
+**Pegadinha aprendida durante a migração.** `atlas-sync` expande `~`/`$HOME` em runtime para gravar paths absolutos em `~/.claude/.atlas-managed`. Rodar `install.sh` sobre **mount remoto/SMB** (ex.: home da Arco montado no laptop pessoal) faz o `$HOME` ser o do laptop — paths gravados ficam inválidos quando a máquina remota é acessada localmente. Na Arco em uso direto, `$HOME` é `/Users/gabriel.gripp`. Solução: rodar `install.sh` **fisicamente na máquina-alvo**. O [`.ai/README.md`](../../README.md) documenta isso explicitamente.
 
 **Consequências.**
 - Pró: nova máquina entra com `git clone` + `./install.sh --machine <m>` e em ~30s tem ferramental idêntico (commands, agents, statusline, hooks).
@@ -401,8 +403,8 @@ dotfiles-ai/
 - Pró: `_index` de scopes (REGISTRY) explicitamente per-machine, sem heurística mágica.
 - Pró: `settings.json` final é derivado e nunca commitado — divergências locais (testes, plugins experimentais) não viram conflito de merge.
 - Contra: dois lugares pra olhar (`base` + `overlay`) ao tunar settings. Mitigado pelo `merge-settings.sh --dry-run` (jq -s deep-merge produz preview).
-- Contra: drift de `~/.claude/.atlas-managed` precisa de `atlas-sync` per-machine — não é resolvido por `git pull` no `dotfiles-ai`. `install.sh` chama `atlas-sync` no fim pra fechar o loop.
-- Reversão: `dotfiles-ai/uninstall.sh` (TODO) removeria os symlinks; ou manualmente, `cat ~/.claude/.atlas-managed | xargs rm` + `find ~/.claude -maxdepth 2 -type l -lname '*dotfiles-ai*' -delete`.
+- Contra: drift de `~/.claude/.atlas-managed` precisa de `atlas-sync` per-machine — não é resolvido por `git pull` no `cangaco`. `install.sh` chama `atlas-sync` no fim pra fechar o loop.
+- Reversão: `uninstall.sh` (TODO) removeria os symlinks; ou manualmente, `cat ~/.claude/.atlas-managed | xargs rm` + remover symlinks que apontam para `cangaco/.ai/`.
 
 **Repos relacionados.**
 - `git@github.com:grippado/cangaco.git` — esta arquitetura

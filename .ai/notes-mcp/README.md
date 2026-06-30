@@ -1,9 +1,11 @@
 # notes-mcp
 
-MCP server **local** (stdio) que dá ao **Claude Desktop** acesso ao vault Obsidian em `~/.notes`.
+> Parte do [cérebro Atlas](../README.md). MCP server **local** (stdio) que dá ao **Claude Desktop** acesso ao vault Obsidian em `$NOTES_VAULT`.
 
 Tudo roda na tua máquina: os arquivos são lidos do disco e os embeddings são gerados
 localmente (modelo `all-MiniLM-L6-v2` via transformers.js). Nada do segundo cérebro sai pra fora.
+
+---
 
 ## Tools expostas
 
@@ -15,12 +17,16 @@ localmente (modelo `all-MiniLM-L6-v2` via transformers.js). Nada do segundo cér
 | `create_note` | Cria nota nova (padrão em `0-inbox/`). Recusa sobrescrever. |
 | `append_note` | Anexa conteúdo ao fim de uma nota existente. |
 
+---
+
 ## Como funciona o índice
 
 - Na primeira execução: baixa o modelo (~90MB, fica em cache) e gera embeddings das ~700 notas (~30s).
 - Cache de embeddings em `~/.cache/notes-mcp/embeddings.json` (fora do vault, não polui o git).
 - Boots seguintes são **incrementais**: só recalcula embedding de notas com `mtime` alterado (~0.5s).
 - O índice é reconstruído a cada start do server (que o Claude Desktop dispara ao abrir).
+
+---
 
 ## Rodar / manter
 
@@ -42,9 +48,13 @@ pnpm start          # sobe o server manualmente (normalmente quem sobe é o Clau
 Não é obrigatório: o boot incremental já pega notas alteradas. Rode `pnpm reindex` só se quiser
 forçar tudo do zero (ex.: muitas notas mudaram de uma vez e você quer pré-aquecer antes de abrir o app).
 
+---
+
 ## Instalação no Claude Desktop
 
 Adicionar ao `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+**Personal** (`$HOME=/Users/grippado`):
 
 ```json
 {
@@ -60,12 +70,37 @@ Adicionar ao `~/Library/Application Support/Claude/claude_desktop_config.json`:
 }
 ```
 
+**Arco** (`$HOME=/Users/gabriel.gripp`) — ajustar paths:
+
+```json
+{
+  "mcpServers": {
+    "notes": {
+      "command": "/Users/gabriel.gripp/.local/share/fnm/node-versions/v25.8.1/installation/bin/node",
+      "args": ["/Users/gabriel.gripp/cangaco/.ai/notes-mcp/dist/index.js"],
+      "env": {
+        "NOTES_VAULT_PATH": "/Users/gabriel.gripp/.notes"
+      }
+    }
+  }
+}
+```
+
 Depois: **reinicie o Claude Desktop** (Cmd+Q e abrir de novo). O server `notes` aparece no ícone de
-conectores/ferramentas. Em conversas, o Claude vai poder buscar e ler tuas notas.
+conectores/ferramentas.
+
+---
 
 ## Variáveis de ambiente
 
 | Var | Padrão | Descrição |
 |-----|--------|-----------|
-| `NOTES_VAULT_PATH` | `~/.notes` | Raiz do vault Obsidian. |
+| `NOTES_VAULT_PATH` | `~/.notes` | Raiz do vault Obsidian (`$NOTES_VAULT` via `env.sh`). |
 | `NOTES_MCP_CACHE_DIR` | `~/.cache/notes-mcp` | Onde guardar o cache de embeddings. |
+
+---
+
+## Docs relacionados
+
+- [`.ai/README.md`](../README.md) — hub Atlas
+- [README principal](../../README.md) — mapa do cangaço

@@ -1,13 +1,32 @@
 # ide-adapters
 
-Adapters do harvester de memorias de IDEs/CLIs de IA. Cada adapter extrai itens
-de UMA fonte (Cursor, gemini-cli, opencode, copilot, claude-desktop, ...) e os
-emite no contrato normalizado abaixo. O entrypoint
-`~/cangaco/.ai/bin/ide-memory-harvest` orquestra, faz merge e deduplica.
+> Parte do [cérebro Atlas](../../README.md). Adapters do harvester de memórias de IDEs/CLIs de IA.
 
-Coloque cada adapter aqui como `<name>.sh` (executavel). O `<name>` (sem `.sh`)
-e usado como chave de `--since` no watermark e deve bater com o campo `tool`
+Cada adapter extrai itens de **uma** fonte (Cursor, gemini-cli, opencode, copilot, claude-desktop, …) e os
+emite no contrato normalizado abaixo. O entrypoint
+[`ide-memory-harvest`](../ide-memory-harvest) orquestra, faz merge e deduplica.
+
+Coloque cada adapter aqui como `<name>.sh` (executável). O `<name>` (sem `.sh`)
+é usado como chave de `--since` no watermark e deve bater com o campo `tool`
 dos itens emitidos.
+
+## Uso rápido
+
+```bash
+# harvest incremental (lê watermark do vault, emite JSONL novo em stdout)
+~/cangaco/.ai/bin/ide-memory-harvest
+
+# backfill desde uma data
+~/cangaco/.ai/bin/ide-memory-harvest --since 2026-01-01
+
+# incluir claude-desktop (custo: LevelDB grande)
+~/cangaco/.ai/bin/ide-memory-harvest --ide-deep
+
+# aplicar: avança watermark e registra item_ids vistos
+~/cangaco/.ai/bin/ide-memory-harvest --advance-watermark < novos.jsonl
+```
+
+Watermark e histórico moram em `~/.notes/6-audits/ide-memories/`.
 
 ---
 
@@ -88,3 +107,9 @@ done
 
 exit 0
 ```
+
+---
+
+## Docs relacionados
+
+- [`.ai/README.md`](../../README.md) — hub Atlas
