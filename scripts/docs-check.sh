@@ -2,11 +2,12 @@
 # Validates documentation consistency across the cangaço repo.
 # Usage: scripts/docs-check.sh [--verbose]
 #
-# Checks sub-docs (READMEs, ARCHITECTURE.md, CHEATSHEET.md) and Arco configs for:
-#   - stale "dotfiles-ai" references (except vault runbook paths)
-#   - wrong Arco paths (/Volumes/*, /Users/grippado/www/isaac)
-#   - wrong agent count ("23 agents")
-#   - broken relative markdown links
+# Canonical $HOME per machine:
+#   personal → /Users/grippado
+#   arco     → /Users/gabriel.gripp
+#   vps      → /home/grippado
+#
+# Checks for stale dotfiles-ai refs, wrong home paths, agent counts, and broken links.
 
 set -uo pipefail
 
@@ -23,7 +24,97 @@ warn() { echo "  ! $1"; WARN=$((WARN + 1)); }
 ok()   { [ "$VERBOSE" -eq 1 ] && echo "  ✓ $1"; }
 info() { echo "${1-}"; }
 
-# Collect doc files (sub-docs only — root README included as canonical reference)
+# Allowlist: files that may reference legacy /Volumes/ for harvesting only
+is_legacy_harvest_file() {
+  case "$1" in
+    */ide-adapters/cursor.sh) return 0 ;;
+  esac
+  return 1
+}
+
+check_line_home_paths() {
+  local rel="$1" lineno="$2" content="$3"
+
+  if echo "$content" | grep -q '/Volumes/'; then
+    if is_legacy_harvest_file "$rel"; then
+      ok "$rel:$lineno /Volumes/ in legacy harvest regex (allowed)"
+    else
+      fail "$rel:$lineno banned path: /Volumes/ (use canonical \$HOME)"
+    fi
+  fi
+
+  if echo "$content" | grep -qE '/root ou similar|/root`|\$HOME.*/root'; then
+    fail "$rel:$lineno wrong VPS home: use /home/grippado (not /root)"
+  fi
+
+  if echo "$content" | grep -q '/Users/grippado/www/isaac'; then
+    fail "$rel:$lineno wrong workspace: /Users/grippado/www/isaac (Arco → /Users/gabriel.gripp/www/isaac)"
+  fi
+
+  if echo "$content" | grep -q '/Users/gabriel.gripp/www/personal'; then
+    fail "$rel:$lineno wrong workspace: /Users/gabriel.gripp/www/personal (Personal → /Users/grippado/www/personal)"
+  fi
+
+  local user
+  while IFS= read -r user; do
+    [ -z "$user" ] && continue
+    case "$user" in
+      grippado|gabriel.gripp) ;;
+      *) fail "$rel:$lineno unknown macOS home: /Users/$user (allowed: grippado, gabriel.gripp)" ;;
+    esac
+  done < <(echo "$content" | grep -oE '/Users/[a-zA-Z0-9._-]+' | sed 's|^/Users/||' | sort -u)
+
+  while IFS= read -r user; do
+    [ -z "$user" ] && continue
+    case "$user" in
+      grippado) ;;
+      *) fail "$rel:$lineno unknown Linux home: /home/$user (allowed: grippado)" ;;
+    esac
+  done < <(echo "$content" | grep -oE '/home/[a-zA-Z0-9._-]+' | sed 's|^/home/||' | sort -u)
+}
+
+check_line_doc_patterns() {
+  local rel="$1" lineno="$2" content="$3"
+
+  if echo "$content" | grep -q 'dotfiles-ai'; then
+    if echo "$content" | grep -qE '~/.notes/1-contexts/dotfiles-ai|1-contexts/dotfiles-ai/runbooks'; then
+      ok "$rel:$lineno vault runbook reference (allowed)"
+    else
+      fail "$rel:$lineno stale reference: dotfiles-ai"
+      [ "$VERBOSE" -eq 1 ] && echo "      $content"
+    fi
+  fi
+
+  if echo "$content" | grep -qE '23 agents|23 agent'; then
+    fail "$rel:$lineno wrong agent count: use 21 agents (globals only)"
+  fi
+
+  check_line_home_paths "$rel" "$lineno" "$content"
+}
+
+scan_file_docs() {
+  local f="$1"
+  local rel="${f#$REPO/}"
+  CHECKED=$((CHECKED + 1))
+  while IFS= read -r line; do
+    local lineno="${line%%:*}"
+    local content="${line#*:}"
+    check_line_doc_patterns "$rel" "$lineno" "$content"
+  done < <(grep -n '.' "$f" 2>/dev/null || true)
+}
+
+scan_file_configs() {
+  local f="$1"
+  local rel="${f#$REPO/}"
+  CHECKED=$((CHECKED + 1))
+  while IFS= read -r line; do
+    local lineno="${line%%:*}"
+    local content="${line#*:}"
+    check_line_home_paths "$rel" "$lineno" "$content"
+  done < <(grep -n '.' "$f" 2>/dev/null || true)
+}
+
+# Collect doc files
 mapfile -t DOC_FILES < <(
   find "$REPO" -type f \( \
     -name 'README.md' -o \
@@ -35,79 +126,31 @@ mapfile -t DOC_FILES < <(
     | sort
 )
 
-info "── docs-check ──"
-info "repo:  $REPO"
-info "files: ${#DOC_FILES[@]}"
-echo
-
-# --- Pattern checks ---
-
-info "[banned patterns]"
-
-for f in "${DOC_FILES[@]}"; do
-  rel="${f#$REPO/}"
-  CHECKED=$((CHECKED + 1))
-
-  # dotfiles-ai — allow vault runbook paths only
-  while IFS= read -r line; do
-    lineno="${line%%:*}"
-    content="${line#*:}"
-    if echo "$content" | grep -qE '~/.notes/1-contexts/dotfiles-ai|1-contexts/dotfiles-ai/runbooks'; then
-      ok "$rel:$lineno vault runbook reference (allowed)"
-      continue
-    fi
-    fail "$rel:$lineno stale reference: dotfiles-ai"
-    [ "$VERBOSE" -eq 1 ] && echo "      $content"
-  done < <(grep -n 'dotfiles-ai' "$f" 2>/dev/null || true)
-
-  # Wrong Arco SMB/mount paths in docs
-  while IFS= read -r line; do
-    lineno="${line%%:*}"
-    fail "$rel:$lineno wrong Arco path: /Volumes/... (use /Users/gabriel.gripp)"
-  done < <(grep -n '/Volumes/' "$f" 2>/dev/null || true)
-
-  # Personal home used where Arco workspace is meant
-  while IFS= read -r line; do
-    lineno="${line%%:*}"
-    fail "$rel:$lineno wrong Arco workspace path: /Users/grippado/www/isaac (use /Users/gabriel.gripp/www/isaac)"
-  done < <(grep -n '/Users/grippado/www/isaac' "$f" 2>/dev/null || true)
-
-  # Wrong agent count
-  while IFS= read -r line; do
-    lineno="${line%%:*}"
-    fail "$rel:$lineno wrong agent count: use 21 agents (globals only)"
-  done < <(grep -nE '23 agents|23 agent' "$f" 2>/dev/null || true)
-done
-
-if [ "$FAIL" -eq 0 ]; then
-  ok "no banned patterns in docs"
-fi
-
-echo
-info "[arco path config]"
-
-mapfile -t ARCO_FILES < <(
-  find "$REPO/.ai/machines/arco" "$REPO/.ai/contexts/arco" -type f \
+# Machine + context configs (canonical home paths)
+mapfile -t CONFIG_FILES < <(
+  find "$REPO/.ai/machines" "$REPO/.ai/contexts" -type f \
     ! -path '*/.git/*' 2>/dev/null | sort
 )
 
-for f in "${ARCO_FILES[@]}"; do
-  rel="${f#$REPO/}"
-  CHECKED=$((CHECKED + 1))
+info "── docs-check ──"
+info "repo:  $REPO"
+info "canonical homes: /Users/grippado | /Users/gabriel.gripp | /home/grippado"
+info "files: ${#DOC_FILES[@]} docs + ${#CONFIG_FILES[@]} configs"
+echo
 
-  while IFS= read -r line; do
-    lineno="${line%%:*}"
-    fail "$rel:$lineno wrong Arco path: /Volumes/... (use /Users/gabriel.gripp)"
-  done < <(grep -n '/Volumes/' "$f" 2>/dev/null || true)
-
-  while IFS= read -r line; do
-    lineno="${line%%:*}"
-    fail "$rel:$lineno wrong Arco workspace path: /Users/grippado/www/isaac (use /Users/gabriel.gripp/www/isaac)"
-  done < <(grep -n '/Users/grippado/www/isaac' "$f" 2>/dev/null || true)
+info "[banned patterns — docs]"
+for f in "${DOC_FILES[@]}"; do
+  scan_file_docs "$f"
 done
 
-if [ "${#ARCO_FILES[@]}" -gt 0 ] && [ "$FAIL" -eq 0 ]; then
-  ok "arco configs clean"
+echo
+info "[canonical homes — machine/context configs]"
+for f in "${CONFIG_FILES[@]}"; do
+  scan_file_configs "$f"
+done
+
+if [ "$FAIL" -eq 0 ]; then
+  ok "no banned patterns"
 fi
 
 echo
@@ -115,15 +158,12 @@ info "[relative markdown links]"
 
 check_link() {
   local doc="$1" link="$2"
-  local doc_dir base target
+  local doc_dir target
 
-  # skip external links
   [[ "$link" =~ ^https?:// ]] && return 0
   [[ "$link" =~ ^mailto: ]] && return 0
-  # skip anchors-only
   [[ "$link" =~ ^# ]] && return 0
 
-  # strip anchor
   link="${link%%#*}"
   [ -z "$link" ] && return 0
 

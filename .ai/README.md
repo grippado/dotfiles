@@ -61,13 +61,22 @@ Clone do memory-sync (obrigatório em toda máquina):
 git clone git@github.com:grippado/ai-memory-sync.git ~/.ai-memory-sync
 ```
 
-### VPS (servidor headless)
+### VPS (Ubuntu, `$HOME` = `/home/grippado`)
 
 ```bash
 cd ~/cangaco/.ai
 ./install.sh --machine vps --dry-run
 ./install.sh --machine vps
 ```
+
+No `~/.bashrc` ou `~/.zshrc` da VPS:
+
+```bash
+export DOTFILES_AI_MACHINE=vps
+source "$HOME/cangaco/.ai/machines/$DOTFILES_AI_MACHINE/env.sh"
+```
+
+Depois: `./scripts/doctor.sh`.
 
 > ⚠️ **Rode o install na máquina física, nunca por mount remoto.** O `atlas-sync` expande `$HOME` em tempo de execução para gravar paths absolutos nos symlinks. Por SMB/SSH montado, o `$HOME` seria o da máquina errada.
 
@@ -129,7 +138,7 @@ Há dois mecanismos complementares para slash commands em `~/.claude/commands/`:
 |---------|--------|----------------|
 | **personal** | Mac pessoal | `/Users/grippado` |
 | **arco** | Mac de trabalho | `/Users/gabriel.gripp` |
-| **vps** | servidor headless | `/root` ou similar |
+| **vps** | servidor headless | `/home/grippado` |
 
 Cada perfil traz:
 

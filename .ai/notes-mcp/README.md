@@ -70,7 +70,7 @@ Adicionar ao `~/Library/Application Support/Claude/claude_desktop_config.json`:
 }
 ```
 
-**Arco** (`$HOME=/Users/gabriel.gripp`) — ajustar paths:
+**Arco** (`$HOME=/Users/gabriel.gripp`):
 
 ```json
 {
@@ -80,6 +80,22 @@ Adicionar ao `~/Library/Application Support/Claude/claude_desktop_config.json`:
       "args": ["/Users/gabriel.gripp/cangaco/.ai/notes-mcp/dist/index.js"],
       "env": {
         "NOTES_VAULT_PATH": "/Users/gabriel.gripp/.notes"
+      }
+    }
+  }
+}
+```
+
+**VPS** (`$HOME=/home/grippado`):
+
+```json
+{
+  "mcpServers": {
+    "notes": {
+      "command": "/home/grippado/.local/share/fnm/node-versions/v25.8.1/installation/bin/node",
+      "args": ["/home/grippado/cangaco/.ai/notes-mcp/dist/index.js"],
+      "env": {
+        "NOTES_VAULT_PATH": "/home/grippado/.notes"
       }
     }
   }
