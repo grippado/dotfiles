@@ -121,12 +121,12 @@ Persiste o contexto da sessão atual (conversa + agents que rodaram) como nota n
    NÃO copiar diffs de código nem outputs longos — referenciar paths e descrever a mudança.
    ```
 
-6. **Push do vault pro origin** (SÓ na máquina `arco`, logo após a nota ser criada):
+6. **Push do vault pro origin** (nas máquinas produtoras `arco` e `vps`, logo após a nota ser criada):
 
-   **Guard de máquina:** este push só acontece quando `$DOTFILES_AI_MACHINE == "arco"`. O skill é compartilhado entre máquinas via dotfiles; em qualquer outra máquina (pessoal etc.) o push é **pulado** — lá o fluxo é puxar e rodar `/organize`, não produzir+pushar. Confirmar a máquina antes:
+   **Guard de máquina:** este push acontece quando `$DOTFILES_AI_MACHINE` for `arco` **ou** `vps` (máquinas produtoras que pusham o inbox pro origin pra ser consumido na pessoal). O command é compartilhado entre máquinas via dotfiles; na máquina `personal` o push é **pulado** — lá o fluxo é puxar e rodar `/organize`, não produzir+pushar. Confirmar a máquina antes:
 
    ```bash
-   if [ "$DOTFILES_AI_MACHINE" = "arco" ]; then
+   if [ "$DOTFILES_AI_MACHINE" = "arco" ] || [ "$DOTFILES_AI_MACHINE" = "vps" ]; then
      cd ~/.notes
      git add -A
      # commitar só se houver algo staged:
@@ -138,12 +138,12 @@ Persiste o contexto da sessão atual (conversa + agents que rodaram) como nota n
    )"
      git push
    else
-     echo "máquina != arco ($DOTFILES_AI_MACHINE) — push do vault pulado por design"
+     echo "máquina != produtora ($DOTFILES_AI_MACHINE) — push do vault pulado por design"
    fi
    ```
 
    Regras do push:
-   - **Só na arco.** Em outra máquina, pular e reportar que pulou (não é erro).
+   - **Só nas produtoras (`arco` e `vps`).** Na `personal`, pular e reportar que pulou (não é erro).
    - Commitar **tudo** que estiver pendente no vault (a nota recém-criada + qualquer coisa não-commitada de sessões anteriores) — o objetivo é deixar o origin completo, não só a nota desta sessão.
    - Se o working tree já estiver limpo E local em sync com `origin/main`, pular silenciosamente.
    - Mensagem: Conventional Commits + trailer `Co-Authored-By: Claude <noreply@anthropic.com>` via HEREDOC. Sem em-dashes.
@@ -153,7 +153,7 @@ Persiste o contexto da sessão atual (conversa + agents que rodaram) como nota n
    - Path absoluto da nota criada
    - `type` canônico, `context` (chute) e `execution_status` que foram inscritos
    - Quantas sessões órfãs foram incluídas
-   - Resultado do push pro origin (commit SHA + branch, ou "nada pendente", ou "pulado: máquina != arco", ou o erro se falhou)
+   - Resultado do push pro origin (commit SHA + branch, ou "nada pendente", ou "pulado: máquina != produtora", ou o erro se falhou)
    - Sugestão: "Rode `/organize` quando quiser processar o inbox (rotear pro contexto + scouter resolver `issue_id`)"
 
 ## Rules
@@ -165,4 +165,4 @@ Persiste o contexto da sessão atual (conversa + agents que rodaram) como nota n
 - Se já existe nota com mesmo timestamp+slug, incrementar HH:MM (não sobrescrever)
 - Acentuação PT-BR obrigatória no conteúdo (slug e tags ficam ASCII)
 - Se a sessão atual está vazia/trivial (ex: usuário acabou de abrir e só perguntou uma coisa simples), **avisar** e perguntar se ainda assim deve salvar — não criar nota por reflexo
-- Fazer o push do `~/.notes` pro origin ao final (passo 6) **somente na máquina `arco`** (`$DOTFILES_AI_MACHINE == "arco"`), best-effort. É o que permite rodar `/organize` na máquina pessoal. Em qualquer outra máquina, pular o push (não é erro). Fora desse guard, nunca pular por iniciativa própria.
+- Fazer o push do `~/.notes` pro origin ao final (passo 6) **nas máquinas produtoras `arco` e `vps`** (`$DOTFILES_AI_MACHINE` ∈ {`arco`, `vps`}), best-effort. É o que permite rodar `/organize` na máquina pessoal. Na `personal`, pular o push (não é erro). Fora desse guard, nunca pular por iniciativa própria.
