@@ -22,7 +22,7 @@ Você é o especialista em **perfilar o Slack do Gabriel** para abastecer a Fren
 
 1. **Guard de disponibilidade do Slack MCP.** Antes de qualquer coisa, verifique se as tools `mcp__plugin_slack_slack__*` estão disponíveis (via ToolSearch `select:...` se vierem deferred). Se NÃO estiverem (sem OAuth, headless, offline), **aborte com aviso claro** `slack-context-profiler: Slack MCP indisponível — perfil não gerado` e NÃO falhe — apenas reporte. Você só entrega valor em run interativo com OAuth.
 2. **Máquina atual.** Leia `$DOTFILES_AI_MACHINE` (env). Se vazio, default `personal`. Todo output de máquina é escopado por ela, porque cada máquina autentica num workspace distinto (`arco` no workspace Arco, `personal` no pessoal).
-3. **Vault.** Leia `$NOTES_VAULT` (env; default `/Users/grippado/.notes`). O schema de `type` canônico está em `$NOTES_VAULT/.schema/note-schema.json` — para notas de análise use `type: analysis` (NÃO existe `reference`).
+3. **Vault.** Leia `$NOTES_VAULT` (env; setado por `machines/<perfil>/env.sh`, tipicamente `~/.notes`). O schema de `type` canônico está em `$NOTES_VAULT/.schema/note-schema.json` — para notas de análise use `type: analysis` (NÃO existe `reference`).
 4. **Whitelist existente.** Leia `~/cangaco/.ai/machines/$DOTFILES_AI_MACHINE/slack-channels.json` se existir — você vai ENRIQUECÊ-lo, preservando curadoria manual (ver "Merge não-destrutivo").
 
 ## Missão

@@ -309,7 +309,7 @@ Para cada symlink encontrado, decidir explicitamente:
 
 ### ADR-009 — Portabilidade multi-máquina via env vars com guard explícito
 
-**Contexto.** Atlas usado em 2+ máquinas: MBP pessoal (`/Users/grippado`) + Mac Arco (`/Users/gabriel.gripp`, com layouts de diretório diferentes — vault em `.notes` aqui, em `PROJECTS/central-brain` lá). Levantamento na Fase 3 (após validação do `/organize`) achou **4 arquivos / 7 ocorrências em 3 padrões distintos**:
+**Contexto.** Atlas usado em 3 máquinas: MBP pessoal (`/Users/grippado`), Mac Arco (`/Users/gabriel.gripp`) e VPS headless (`/home/grippado`). Levantamento na Fase 3 (após validação do `/organize`) achou **4 arquivos / 7 ocorrências em 3 padrões distintos**:
 
 - (a) Vault externo (notes, 2 refs): genuinamente multi-localizado.
 - (b) Memory path derivado do cwd (flagbridge, 1 ref): convenção do próprio Claude Code (`~/.claude/projects/<slug>/`, slug = path absoluto com `/` → `-`); varia por máquina por construção.
@@ -532,15 +532,16 @@ git clone git@github.com:grippado/declare-ui.git  ~/www/personal/declare-ui
 git clone git@github.com:isaac/gravity-design-system.git ~/www/isaac/gravity-design-system
 ```
 
-Se o layout for diferente (ex: Mac Arco usa `~/www/PROJECTS/central-brain` em vez de `~/.notes`): editar `~/.claude/REGISTRY.json` pra refletir, em vez de recriar a estrutura igual.
+Se o layout de repos for diferente do padrão: editar `~/.claude/REGISTRY.json` (ou `machines/<perfil>/REGISTRY.json` no repo) pra refletir, em vez de recriar a estrutura igual.
 
 ### 3. Variáveis de ambiente
 
 No `~/.zshrc` (ou `~/.zshrc_local` machine-specific):
 
 ```bash
-export NOTES_VAULT="$HOME/.notes"        # MBP
-# export NOTES_VAULT="$HOME/www/PROJECTS/central-brain"  # Mac Arco
+export DOTFILES_AI_MACHINE=personal   # ou arco | vps
+source "$HOME/cangaco/.ai/machines/$DOTFILES_AI_MACHINE/env.sh"
+# NOTES_VAULT vem do env.sh — ~/.notes em todas as máquinas
 ```
 
 Lista atual de vars necessárias: §5 Catálogo. Se um command falhar com `NOME_DA_VAR not set`, exportar e tentar de novo.

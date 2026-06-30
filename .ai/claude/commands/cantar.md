@@ -32,7 +32,7 @@ A configuração é **env-first**, com fallback opcional em `~/.cordel/config.js
 
 | Item | Env var | Default |
 |---|---|---|
-| Vault | `$NOTES_VAULT` | `/Users/grippado/.notes` |
+| Vault | `$NOTES_VAULT` | `~/.notes` (via `machines/<perfil>/env.sh`; `$HOME` = `/Users/grippado` \| `/Users/gabriel.gripp` \| `/home/grippado`) |
 | Máquina | `$DOTFILES_AI_MACHINE` | `personal` |
 | Granola API key | `$GRANOLA_API_KEY` | `config.granola_api_key` (sem default) |
 

@@ -202,7 +202,7 @@ O mesmo repo serve três perfis sem `if` espalhado: a diferença mora em [`.ai/m
 |---------|--------|----------------|
 | **personal** | Mac pessoal | `/Users/grippado` |
 | **arco** | Mac de trabalho | `/Users/gabriel.gripp` |
-| **vps** | servidor headless | `/root` ou similar |
+| **vps** | servidor headless | `/home/grippado` |
 
 Cada perfil traz:
 

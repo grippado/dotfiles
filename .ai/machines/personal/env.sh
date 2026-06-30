@@ -3,6 +3,8 @@
 # Source from ~/.zshrc_local (or equivalent):
 #   export DOTFILES_AI_MACHINE=personal
 #   source "$HOME/cangaco/.ai/machines/$DOTFILES_AI_MACHINE/env.sh"
+#
+# On the Personal machine: $HOME=/Users/grippado
 
 export NOTES_VAULT="$HOME/.notes"
 
