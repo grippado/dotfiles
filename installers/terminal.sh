@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# terminal.sh — ecossistema de terminal (Ghostty + tmux + sesh) do cangaço.
+# terminal.sh — ecossistema de terminal (tmux + sesh) do cangaço.
 # Standalone e idempotente: pode rodar sozinho ou ser chamado pelo install.sh.
 #
 #   ./installers/terminal.sh          # instala ferramentas + religa symlinks
@@ -48,7 +48,6 @@ else
 fi
 
 # ── Symlinks de config ───────────────────────────────────────
-link "$TERM_DIR/ghostty/config"   "$HOME/.config/ghostty/config"
 link "$TERM_DIR/tmux/tmux.conf"   "$HOME/.tmux.conf"
 link "$TERM_DIR/sesh/sesh.toml"   "$HOME/.config/sesh/sesh.toml"
 
@@ -64,14 +63,6 @@ if ! command -v agent-dashboard >/dev/null 2>&1; then
   fi
 else
   log "agent-dashboard já instalado"
-fi
-
-# ── Ghostty CLI no PATH (conveniência) ───────────────────────
-GHOSTTY_CLI="/Applications/Ghostty.app/Contents/MacOS/ghostty"
-if [ -x "$GHOSTTY_CLI" ]; then
-  mkdir -p "$HOME/.local/bin"
-  ln -sf "$GHOSTTY_CLI" "$HOME/.local/bin/ghostty"
-  log "linked ghostty CLI"
 fi
 
 log "pronto. Abra o tmux e rode 'prefix + I' para instalar os plugins."

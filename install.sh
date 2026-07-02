@@ -89,50 +89,10 @@ fi
 # Config do Claude Code e gerenciada por ~/cangaco/.ai/install.sh (fonte da
 # verdade). Este repo nao escreve em ~/.claude.
 
-# ── Terminal (Ghostty + tmux + sesh) ─────────────────────────
+# ── Terminal (tmux + sesh) ────────────────────────────────────
 # Instala ferramentas, clona TPM e religa os symlinks de config.
 if [ -x "$DFL/installers/terminal.sh" ]; then
     bash "$DFL/installers/terminal.sh"
-fi
-
-# ── Zed editor CLI (macOS) ───────────────────────────────────
-# Expoe `zed` / `zed .` no PATH, espelhando code/cursor.
-ZED_CLI="/Applications/Zed.app/Contents/MacOS/cli"
-if [ -x "$ZED_CLI" ]; then
-    mkdir -p "$HOME/.local/bin"
-    ln -sf "$ZED_CLI" "$HOME/.local/bin/zed"
-    echo "==> Linked zed -> $ZED_CLI"
-fi
-
-# Zed settings: versiona ~/.config/zed/settings.json no dotfiles
-if [ -f "$DFL/zed/settings.json" ]; then
-    mkdir -p "$HOME/.config/zed"
-    if [ -e "$HOME/.config/zed/settings.json" ] && [ ! -L "$HOME/.config/zed/settings.json" ]; then
-        mv "$HOME/.config/zed/settings.json" "$HOME/.config/zed/settings.json.bak.$(date +%Y%m%d%H%M%S)"
-    fi
-    ln -sf "$DFL/zed/settings.json" "$HOME/.config/zed/settings.json"
-    echo "==> Linked zed settings"
-fi
-
-# Zed keymap
-if [ -f "$DFL/zed/keymap.json" ]; then
-    mkdir -p "$HOME/.config/zed"
-    if [ -e "$HOME/.config/zed/keymap.json" ] && [ ! -L "$HOME/.config/zed/keymap.json" ]; then
-        mv "$HOME/.config/zed/keymap.json" "$HOME/.config/zed/keymap.json.bak.$(date +%Y%m%d%H%M%S)"
-    fi
-    ln -sf "$DFL/zed/keymap.json" "$HOME/.config/zed/keymap.json"
-    echo "==> Linked zed keymap"
-fi
-
-# Zed themes (pasta inteira symlinkada)
-if [ -d "$DFL/zed/themes" ]; then
-    mkdir -p "$HOME/.config/zed"
-    if [ -d "$HOME/.config/zed/themes" ] && [ ! -L "$HOME/.config/zed/themes" ]; then
-        cp -n "$HOME/.config/zed/themes/"*.json "$DFL/zed/themes/" 2>/dev/null || true
-        rm -rf "$HOME/.config/zed/themes"
-    fi
-    ln -sf "$DFL/zed/themes" "$HOME/.config/zed/themes"
-    echo "==> Linked zed themes"
 fi
 
 echo '##################################################################'

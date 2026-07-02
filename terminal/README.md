@@ -1,13 +1,10 @@
-# terminal/ — Ghostty + tmux + orquestração de harnesses
+# terminal/ — tmux + orquestração de harnesses
 
-> Parte do [cangaço](../README.md). Este doc é a fonte da verdade para o ecossistema de terminal: rendering, persistência e frota de agentes de IA.
+> Parte do [cangaço](../README.md). Este doc é a fonte da verdade para o ecossistema de terminal: persistência e frota de agentes de IA.
 
 Camadas independentes que, juntas, transformam o terminal num cockpit de orquestração:
 
 ```
-  Ghostty (GPU, splits efêmeros)
-       │
-       ▼
   tmux (persistência, prefix C-a)
        │
        ├── sesh / tmuxp (sessões declarativas, fleet)
@@ -29,7 +26,6 @@ Instala `tmux sesh tmuxp mprocs gum zoxide`, clona o TPM, builda o `agent-dashbo
 
 | Config | Symlink |
 |--------|---------|
-| `terminal/ghostty/config` | `~/.config/ghostty/config` |
 | `terminal/tmux/tmux.conf` | `~/.tmux.conf` |
 | `terminal/sesh/sesh.toml` | `~/.config/sesh/sesh.toml` |
 
@@ -69,9 +65,6 @@ Shell:
 | `fleet` | sobe a frota de agentes (tmuxp agent-fleet.yaml) |
 | `agent-new <nome> [cmd]` | sobe um harness isolado (worktree) numa window própria |
 
-Ghostty: `` cmd+` `` quick terminal · `cmd+d`/`cmd+shift+d` split · `cmd+alt+setas`
-navega · `cmd+shift+enter` zoom · `cmd+shift+r` reload config.
-
 > Tabela completa: [`CHEATSHEET.md`](CHEATSHEET.md).
 
 ---
@@ -105,5 +98,5 @@ Depois reinicie as sessões do Claude Code para os hooks ativarem.
 | Doc | Conteúdo |
 |-----|----------|
 | [README principal](../README.md) | Mapa do cangaço — pilar terminal |
-| [`CHEATSHEET.md`](CHEATSHEET.md) | Referência completa de atalhos tmux + Ghostty |
+| [`CHEATSHEET.md`](CHEATSHEET.md) | Referência completa de atalhos tmux |
 | [`.ai/README.md`](../.ai/README.md) | Cérebro Atlas — orquestração de agentes Claude Code |

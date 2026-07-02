@@ -1,4 +1,0 @@
-# Temas custom do Zed (arquivos .json soltos) vão aqui.
-# A pasta inteira é symlinkada para ~/.config/zed/themes/ pelo install.sh,
-# então qualquer tema que você jogar em ~/.config/zed/themes/ já fica versionado.
-# Temas de extensões (ex: Catppuccin) NÃO ficam aqui — eles vivem na pasta de extensões.

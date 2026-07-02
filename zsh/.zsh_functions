@@ -536,7 +536,7 @@ function sync-brain {
 }
 
 # Sync workspace repos: clone missing, fast-forward existing.
-# Manifest: $DFL/configs/repos.txt (format: bucket/repo<TAB>url)
+# Manifest: ~/cangaco/configs/repos.txt (format: bucket/repo<TAB>url)
 # Usage:
 #   wsync                  # sync all
 #   wsync --dry-run        # show what would happen
@@ -544,7 +544,7 @@ function sync-brain {
 #   wsync --scan           # rebuild manifest from current ~/www state
 function wsync() {
   local base="$HOME/www"
-  local manifest="${DFL:-$HOME/cangaco}/configs/repos.txt"
+  local manifest="$HOME/cangaco/configs/repos.txt"
   local dry_run=0 only="" scan=0 verbose=0
 
   while [ $# -gt 0 ]; do

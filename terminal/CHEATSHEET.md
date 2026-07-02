@@ -97,18 +97,6 @@
 | `agent-new <nome> [cmd]` | harness isolado (worktree) numa window própria |
 | `z <pasta>` | pular pra pasta (zoxide) |
 
-## Ghostty (terminal, fora do tmux)
-
-| Ação | Atalho |
-|------|--------|
-| Quick terminal (dropdown) | `` cmd+` `` |
-| Split à direita / abaixo | `cmd+d` / `cmd+shift+d` |
-| Navegar splits | `cmd+alt+setas` |
-| Zoom no split | `cmd+shift+enter` |
-| Nova aba | `cmd+t` |
-| Recarregar config | `cmd+shift+r` |
-| Tela cheia | `cmd+enter` |
-
 ---
 
 **Regra de ouro:** quase tudo é `prefix` (`Ctrl+a`) + uma tecla. Quando esquecer, `prefix ?`
